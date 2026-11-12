@@ -286,6 +286,11 @@ def build_queen_system_prompt(user_persona: str = "") -> str:
         f"6. Computer Control & Production Integrations built into Queen:\n"
         f"   - Star Menu & Startup (`⭐` button / `/api/star/startup`, `/api/star/action` for open/quit/read/press/fn on all 55 Mantra apps via STAR_API :8863).\n"
         f"   - Voice Engine & Subtitles (`🔊` button / `/api/voice/speak`, `/api/voice/speaking`, `/api/voice/pause`, `/api/voice/stop`, `/api/voice/hear` via MANTRA_VOICE :8837).\n"
+        f"   - Repo reader (READ ONLY): `GET /api/repo/tree?repo=R&q=name words`, `/api/repo/read?repo=R&path=F&start=&end=`, "
+        f"`/api/repo/search?repo=R&q=text&regex=1&context=2` (repo=all searches every cached repo), `/api/repo/sync?repo=R`, "
+        f"`/api/repo/list`. R is a name or owner/name on Marko's GitHub. It mirrors the repo locally and searches there; "
+        f"it never writes to GitHub, and never reads out key or secret files. In chat Marko can type "
+        f"`tree R`, `read R:path`, `read R:path lines 10-60`, `search R for text`, `sync R` and they are answered locally.\n"
         f"   - Affinity, the Canva photo/vector/layout app (`/api/affinity/status`, `/open`, `/close`, `/actions`, `/api`, "
         f"`/do`, `/js`, `/render`). `POST /api/affinity/open` opens it and cancels the Update Studios pop-up "
         f"(Marko updates by hand); when it is already open the answer is exactly \"Affinity is already open.\". "
@@ -500,6 +505,13 @@ try:
 except Exception as _aff_exc:
     AFFINITY_READY = False
     print(f"[affinity] not loaded: {_aff_exc}")
+
+# Repo reader (12.11.2026): read every file of a GitHub repository and search it. Read only.
+try:
+    from repo_reader import register as _register_repo_reader
+    _register_repo_reader(app)
+except Exception as _repo_exc:
+    print(f"[repo_reader] not loaded: {_repo_exc}")
 
 
 def _is_trusted_local_origin(hdr_url: str) -> bool:
@@ -808,10 +820,13 @@ def chat():
             last_user_text = m.get("content", "")
             break
 
-    # "open Affinity" / "close Affinity": answered by the bridge, not the model (no tokens, no cost).
+    # "open Affinity" / "close Affinity" and "tree|read|search|sync <repo>": answered locally, not by the model (no tokens, no cost).
     try:
         from affinity_bridge import chat_app_command
         local_answer = chat_app_command(last_user_text)
+        if not local_answer:
+            from repo_reader import chat_repo_command
+            local_answer = chat_repo_command(last_user_text)
     except Exception as _exc:
         local_answer = None
         print(f"[affinity] chat command skipped: {_exc}")

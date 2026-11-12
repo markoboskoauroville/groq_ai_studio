@@ -118,3 +118,16 @@ cancels the start-up pop-ups (Update Studios, the Welcome window); close never f
 asks to open or close Affinity is answered by `chat_app_command()` in the bridge before the model is called:
 model "local", cost 0. The bridge caches the client module, so Queen is restarted after a change to
 `MACRO_SKILLS/tools/affinity.py`.
+
+## Repo reader (12.11.2026): read and search any repository, never write
+
+Marko: "teach Queen how to go to the repository and read all the files from there, not writing, only reading and
+searching for information." `qwen_app/repo_reader.py`: a repository is mirrored once into `~/.groq/repo_cache/<owner>/<name>`
+(shallow clone through Marko's own `gh` login, so private repos work), refreshed by a fast-forward pull when older than
+10 minutes, then read and searched locally. Routes, all GET: `/api/repo/list | status | sync | tree | read | search`
+(`search` takes `regex`, `case`, `context`, `path`, `limit`; `repo=all` searches every cached repo; `read` takes a line
+range and cuts at 200 KB with a "read again with start=N" hint). Nothing writes to GitHub: POST answers 405.
+Guards: path escapes and `.git` refused; `.env`, keys, certificates and files named secret/token/credential
+are never read or listed in search hits; repos over 400 MB need `big=1`. Chat, answered locally at cost 0:
+`tree R [under P]`, `read R:path [lines A-B]`, `search R for text`, `sync R`. Default branch only.
+The older 🐙 panel (`/api/github/*`) stays for attaching one file to a chat.
