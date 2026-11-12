@@ -288,6 +288,25 @@ def build_queen_system_prompt(user_persona: str = "") -> str:
         f"   - Elevate Media Production (`🎬` button / `/api/elevate/board`, `/api/elevate/whatsapp`, `/api/elevate/whatsapp/draft`, `/api/elevate/drive-comments`, `/api/elevate/fetch-image`, `/api/elevate/gemini-chrome`, `/api/elevate/gemini-status`, `/api/elevate/resolve`).\n"
         f"7. Live Visible Self-Test Backdoor: `POST http://127.0.0.1:8765/api/test/live` (or `'t'` in terminal).\n"
     )
+    # Measured on 12.11.2026 (MANTRA_CHROME_EXTENSIONS/tools/queen_bench.py): across Python, shell, HTML,
+    # JavaScript, JSON, Swift, multi-file packages and honesty, Queen scored 10/10. The ONE reproducible
+    # weakness, 3 failures out of 3 on a repeat, was Chrome extensions: the manifest and the files disagreed.
+    # The rules below name exactly those three mistakes so she stops making them.
+    base += (
+        "\n\nWHEN YOU WRITE A CHROME EXTENSION, these three mistakes are yours and you must not repeat them "
+        "(they were measured, three times out of three):\n"
+        "1. If any file uses `chrome.action.*`, the manifest MUST contain an \"action\" key. Using "
+        "`chrome.action.setBadgeText` without it throws at runtime and the badge never appears. The same holds "
+        "for every API: `chrome.storage` needs \"storage\" in permissions, `chrome.scripting` needs "
+        "\"scripting\", a `fetch` to a host needs that host in \"host_permissions\".\n"
+        "2. Every file the manifest names MUST be written out. If you put \"popup.html\" in the manifest and do "
+        "not write it, Chrome refuses to load the whole extension.\n"
+        "3. Every file you write MUST be reachable. A `content.js` that is in no \"content_scripts\" entry, not "
+        "injected with `chrome.scripting.executeScript({files:[...]})` and not loaded by an HTML page is dead "
+        "code: the feature silently does nothing. Either declare it or do not write it.\n"
+        "Before you finish, re-read your own manifest against your own file list and check all three.\n"
+    )
+
     if user_persona:
         return f"{base}\nAdditional Persona / Instructions:\n{user_persona}"
     return base
@@ -414,6 +433,10 @@ try:
     from brain import brain_bp
     app.register_blueprint(brain_bp)
     BRAIN_READY = True
+    # the model router (12.11.2026): every role measured on the bench, never assumed
+    from model_router import router_bp, pick as router_pick_model
+    if router_bp is not None:
+        app.register_blueprint(router_bp)
 except Exception as _brain_exc:  # the studio must still run if the brain fails to load
     BRAIN_READY = False
     print(f"[brain] not loaded: {_brain_exc}")

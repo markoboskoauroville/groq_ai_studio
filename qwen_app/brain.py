@@ -46,6 +46,11 @@ HARD RULES
 - Never click a switch blind: read the state, act, read it back.
 - `#` in a Send string is the Command key. A literal hash is {#}. Use SendText for a URL.
 - Anything that spends money, sends, submits or deletes goes in "missing" for a human, never in the steps.
+- NEVER call anything with an empty or placeholder argument. `ReadBack("")` matches everything and proves nothing;
+  if you have nothing specific to check for, do not use that step at all.
+- If the goal is to READ or FIND something, use the action that reads (OCR, capture, list) - not a verify block.
+  A verify block is only for confirming a specific expected string after you changed something.
+- Prefer one action that does the whole job over a chain of blocks that approximates it.
 
 Answer with ONE JSON object and nothing else:
 {"goal": "...", "steps": [...], "missing": "", "confidence": 0.0-1.0, "why": "one sentence"}"""
@@ -118,17 +123,26 @@ def extract_json(text):
 def clean_plan(plan, catalogue):
     """Drop any step naming something the catalogue does not have. Honesty over bravado."""
     ids = {b["id"] for b in catalogue.get("blocks", [])} | {a["id"] for a in catalogue.get("actions", [])}
-    kept, dropped = [], []
+    kept, dropped, empty = [], [], []
     for s in plan.get("steps", []) or []:
         name = s.get("action") or s.get("block")
         if name and name not in ids:
             dropped.append(name)
             continue
+        # a call with an empty or placeholder argument proves nothing: ReadBack("") matches any screen (12.11.2026)
+        call = s.get("call") or s.get("script") or ""
+        if re.search(r'\(\s*(""|''|"<[^"]*>"|"\.\.\."|"TODO")\s*\)', call):
+            empty.append(call.strip()[:60])
+            continue
         kept.append(s)
     plan["steps"] = kept
+    notes = []
     if dropped:
-        gap = f'invented and removed: {", ".join(sorted(set(dropped)))}'
-        plan["missing"] = (plan.get("missing") or "") + ("; " if plan.get("missing") else "") + gap
+        notes.append(f'invented and removed: {", ".join(sorted(set(dropped)))}')
+    if empty:
+        notes.append(f'removed, empty argument proves nothing: {"; ".join(empty)}')
+    if notes:
+        plan["missing"] = (plan.get("missing") or "") + ("; " if plan.get("missing") else "") + "; ".join(notes)
         plan["confidence"] = min(float(plan.get("confidence") or 0.5), 0.4)
     return plan
 
@@ -148,6 +162,7 @@ def brain_plan():
     body = request.get_json(silent=True) or {}
     goal = (body.get("goal") or "").strip()
     catalogue = body.get("catalogue") or {}
+    model = (body.get("model") or PLAN_MODEL).strip()        # the router may name a cheaper model
     if not goal:
         return jsonify(error="no goal"), 400
     if not catalogue.get("blocks") and not catalogue.get("actions"):
@@ -164,7 +179,7 @@ def brain_plan():
     except Exception as exc:                                        # pragma: no cover
         return jsonify(error=f"brain cannot reach the key pool: {exc}"), 503
 
-    candidates = pool.candidates(PLAN_MODEL)
+    candidates = pool.candidates(model)
     if not candidates:
         return jsonify(error="every key is cooling down"), 503
 
@@ -172,21 +187,21 @@ def brain_plan():
     for key in candidates:
         try:
             r = Groq(api_key=key, max_retries=0).chat.completions.create(
-                model=PLAN_MODEL, temperature=0, max_tokens=2000,
+                model=model, temperature=0, max_tokens=2000,
                 messages=[{"role": "system", "content": SYSTEM}, {"role": "user", "content": prompt}])
-            pool.good(key, PLAN_MODEL)
+            pool.good(key, model)
             plan = extract_json(r.choices[0].message.content)
             if not plan:
                 last = "the model did not answer with JSON"
                 continue
             plan = clean_plan(plan, catalogue)
             plan.setdefault("goal", goal)
-            plan["model"] = PLAN_MODEL
+            plan["model"] = model
             plan["seconds"] = round(time.time() - t0, 2)
             return jsonify(plan)
         except Exception as exc:
             last = str(exc)
-            pool.cool(key, PLAN_MODEL, exc)
+            pool.cool(key, model, exc)
     return jsonify(error=f"no key could answer: {last}"), 502
 
 

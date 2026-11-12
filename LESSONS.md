@@ -38,3 +38,12 @@
 - **12.11.2026, Queen passes the gate now.** `verify ~/Developer/groq_ai_studio/qwen_app` is CLEAR. It was not: the
   first run reported 18 errors, all of them false - unused imports counted as defects, and macOS tidy from 2006
   calling `<main>` and `<svg>` errors. The checker was wrong, not the code.
+- **12.11.2026, install.sh named its files one by one, and that bit twice.** `brain.py` and then `model_router.py`
+  were written, imported by `app.py`, and silently absent from `~/.groq`, so their routes 404ed. Now it copies
+  `qwen_app/*.py`. A list of filenames in an install script is a trap that springs on the next new file.
+- **12.11.2026, naming the exact mistake cures it.** Queen failed the same three Chrome manifest checks three times
+  out of three. Writing those three mistakes into her system prompt, by name, took the ladder to 7/7. The cost of
+  the longer prompt is real: the same run went from $0.013 to $0.101 on qwen3.8-27b, which is why the model router
+  now sends that work to gpt-oss-20b at $0.0108.
+- **12.11.2026, `bool({})` is False.** My own grader marked `"action": {}` - which is correct and complete - as a
+  missing key, and blamed Queen for it. Test for the KEY, not its truthiness.

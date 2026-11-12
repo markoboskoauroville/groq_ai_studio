@@ -35,6 +35,41 @@ always parsed, and always did the thing that was asked.
 Levels 4 and 5 were re-run twice more: **3 failures out of 3 each time.** This is systematic, not bad luck. And note
 that the two hardest levels passed while two middle ones failed — so this is not a complexity ceiling. It is a blind spot.
 
+## The blind spot was cured (12.11.2026, same day)
+
+The three rules above were written into Queen's always-on system prompt (`build_queen_system_prompt`), naming the
+three mistakes exactly. The ladder was then run again: **7 of 7 clean**, including all three that had failed three
+times out of three. Telling her precisely what she gets wrong fixes it; a general "be careful" would not have.
+
+The cost of the cure is real and worth knowing: the longer prompt rides on every call, and the same seven extensions
+went from $0.013 to $0.101 on `qwen/qwen3.8-27b`. That is what the model router below is for.
+
+## Every Groq model, measured before it was given a role
+
+Marko, 12.11.2026: "Before giving the role to any of Groq models, please test them truly and see their bugs."
+Two batteries, every answer graded by real tools through `verify`: the 10-task stress set (Python, shell, HTML,
+JavaScript, JSON, Swift, a multi-file package, three files that cross-reference, a config read back, and an honesty
+test) and the 7-step extension ladder.
+
+| Model | Stress | Extensions | Verdict |
+|---|---|---|---|
+| `openai/gpt-oss-20b` | **10/10** $0.0060 | **7/7** $0.0108 | the best value by a wide margin; now the default |
+| `openai/gpt-oss-120b` | 10/10 $0.0076 | 6/7 $0.0211 | one JavaScript syntax slip; no measured edge over the 20b |
+| `qwen/qwen3.8-27b` | 10/10 $0.0182 | 7/7 $0.1012 | correct everywhere, and nine times the price |
+| `qwen/qwen3.6-27b` | 9/10 $0.0667 | not run | slowest and dearest; superseded |
+| `allam-2-7b` | Arabic-first, not benchmarked for code |
+| `canopylabs/orpheus-v1-english` | speech out: ~5x faster than real time, six fixed voices, **no cloning** |
+| `whisper-large-v3` | speech in: **13x faster than real time, 95.8%** on a round trip through the speakers |
+
+**The surprise, and the reason for measuring at all: the cheapest model was the most reliable.** The 20b scored
+perfectly on both batteries while the model nine times its price scored the same. Nothing here was assumed.
+
+**What the speech models can and cannot do.** Orpheus has exactly six voices - autumn, diana, hannah, austin, daniel,
+troy - and the API rejects every reference-audio field (`reference_audio`, `voice_clone`, `speaker_audio` all return
+"unknown field"), so it cannot clone a voice. It is kept for its speed. Cloning stays with the local Beatrice engine
+on `127.0.0.1:8837`, which holds eleven cloned voices. One real bug: the WAV that Orpheus returns has a wrong frame
+count in its header, so players report an absurd duration; compute the length from the byte count instead.
+
 ## So where is the line for leaving him alone?
 
 **The honest answer is that the line is not a difficulty level — it is whether a machine checks his work.**
