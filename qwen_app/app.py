@@ -286,6 +286,13 @@ def build_queen_system_prompt(user_persona: str = "") -> str:
         f"6. Computer Control & Production Integrations built into Queen:\n"
         f"   - Star Menu & Startup (`⭐` button / `/api/star/startup`, `/api/star/action` for open/quit/read/press/fn on all 55 Mantra apps via STAR_API :8863).\n"
         f"   - Voice Engine & Subtitles (`🔊` button / `/api/voice/speak`, `/api/voice/speaking`, `/api/voice/pause`, `/api/voice/stop`, `/api/voice/hear` via MANTRA_VOICE :8837).\n"
+        f"   - Claude Code link (LOCAL FIRST, Marko 12.11.2026): `GET /api/claude/status`, `/api/claude/sessions`, "
+        f"`/api/claude/transcript?sid=`, `POST /api/claude/ask {{question}}` (the local Claude Code on Marko's plan, no API "
+        f"credits), `POST /api/claude/tell {{sid,text}}`. In chat: `ask claude <question>`, `list sessions`. NEVER call the "
+        f"Anthropic or Google API while the local Claude Code is reachable. If it is not reachable, say exactly: "
+        f"\"I cannot reach the local Claude Code. Do you want to use API credits?\" and wait for his yes.\n"
+        f"   - Eyes: `POST /api/vision/ask {{question, path | repo+file | url, json}}` shows a picture to your own Qwen model "
+        f"(you can see images; nothing had to be enabled on Groq).\n"
         f"   - Repo reader (READ ONLY): `GET /api/repo/tree?repo=R&q=name words`, `/api/repo/read?repo=R&path=F&start=&end=`, "
         f"`/api/repo/search?repo=R&q=text&regex=1&context=2` (repo=all searches every cached repo), `/api/repo/sync?repo=R`, "
         f"`/api/repo/list`. R is a name or owner/name on Marko's GitHub. It mirrors the repo locally and searches there; "
@@ -356,9 +363,34 @@ def build_queen_system_prompt(user_persona: str = "") -> str:
         "Write only the files YOUR task needs, in that same shape, and make sure your JavaScript parses.\n"
     )
 
+    base += _queen_skills_block()
     if user_persona:
         return f"{base}\nAdditional Persona / Instructions:\n{user_persona}"
     return base
+
+
+# Queen's skills (12.11.2026). Marko: "Every time I ask you to do something, through Queen, you need to teach her,
+# you need to write a skill so next time if I ask directly, she's able to do it without you."
+# A skill is one Markdown file in queen_skills/ (installed to ~/.groq/queen_skills/): when to use it, what to call,
+# in which order, what to check. Every skill is read into this prompt on every turn, so a new file is a new skill
+# with no code change. Work that needs code gets a route and, when useful, a chat command too.
+QUEEN_SKILLS_DIR = Path(__file__).resolve().parent.parent / "queen_skills"
+
+
+def _queen_skills_block() -> str:
+    try:
+        files = sorted(QUEEN_SKILLS_DIR.glob("*.md"))
+    except Exception:
+        return ""
+    if not files:
+        return ""
+    parts = ["\n\nYOUR SKILLS (written for you so you can do these without Claude Code; follow them):\n"]
+    for f in files:
+        try:
+            parts.append(f"\n### skill: {f.stem}\n{f.read_text(encoding='utf-8').strip()}\n")
+        except Exception:
+            continue
+    return "".join(parts)
 
 
 def detect_code_intent(text: str) -> bool:
@@ -512,6 +544,20 @@ try:
     _register_repo_reader(app)
 except Exception as _repo_exc:
     print(f"[repo_reader] not loaded: {_repo_exc}")
+
+# Vision (12.11.2026): Queen looks at pictures with her own Qwen model (image_url), cost in the ledger.
+try:
+    from vision import register as _register_vision
+    _register_vision(app, pool, record_spend)
+except Exception as _vis_exc:
+    print(f"[vision] not loaded: {_vis_exc}")
+
+# Claude link (12.11.2026): Queen <-> the local Claude Code, on the plan; API credits only with Marko's yes.
+try:
+    from claude_link import register as _register_claude_link
+    _register_claude_link(app)
+except Exception as _cl_exc:
+    print(f"[claude_link] not loaded: {_cl_exc}")
 
 
 def _is_trusted_local_origin(hdr_url: str) -> bool:
@@ -827,6 +873,9 @@ def chat():
         if not local_answer:
             from repo_reader import chat_repo_command
             local_answer = chat_repo_command(last_user_text)
+        if not local_answer:
+            from claude_link import chat_claude_command
+            local_answer = chat_claude_command(last_user_text)
     except Exception as _exc:
         local_answer = None
         print(f"[affinity] chat command skipped: {_exc}")
@@ -2892,6 +2941,27 @@ def api_auto_update_run():
     model = data.get("model")
     dry_run = bool(data.get("dry_run", False))
     target_files = data.get("target_files") if isinstance(data.get("target_files"), list) else None
+
+    # Marko, 12.11.2026: no Anthropic or Google API while the local Claude Code is reachable; API only with his yes.
+    import claude_link
+    try:
+        how = claude_link.route(bool(data.get("allow_api")))
+    except claude_link.NeedConsent as exc:
+        return jsonify(ok=False, need_consent=True, message=str(exc)), 409
+    if how == "local" and not dry_run:
+        brief = (f"You are updating Queen (Groq AI Studio), the repository you are in. Marko's instruction:\n{instruction}\n\n"
+                 f"Make the change in the source here (qwen_app/...). Keep every existing behaviour. Then run "
+                 f"python3 -m py_compile on each changed Python file and ./install.sh. Do not restart Queen, do not commit, "
+                 f"do not push: report in a few lines what you changed and how you checked it.")
+        try:
+            res = claude_link.ask(brief, model=(model or "sonnet") if (model or "").startswith(("sonnet", "opus", "haiku")) else "sonnet",
+                                  cwd=GIT_ROOT, timeout=1200, permission_mode="acceptEdits",
+                                  allowed_tools=["Read", "Edit", "Write", "Grep", "Glob", "Bash(python3 -m py_compile:*)",
+                                                 "Bash(./install.sh)", "Bash(git diff:*)", "Bash(git status:*)"])
+        except Exception as exc:
+            return jsonify(ok=False, error=f"local Claude Code did not finish: {exc}"), 502
+        return jsonify(ok=True, via="local Claude Code (plan)", cost_usd=0, report=res["answer"],
+                       next="restart Queen to load it; commit and push when it is checked")
 
     status_code, payload = run_surgical_auto_update(
         instruction=instruction,

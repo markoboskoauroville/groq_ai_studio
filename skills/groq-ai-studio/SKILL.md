@@ -2,6 +2,21 @@
 name: groq-ai-studio
 description: Groq AI Studio, Marko's local browser chat for the Groq API (command `qwen` / "Queen", repo groq_ai_studio, installed in ~/.groq): key pool with failover, spend ledger, Code Box, GitHub reader, backdoor API, CI-gated self-update pipeline, server-side chat persistence, auto-update GitHub repo. Use for ANY qwen command / Queen / Groq chat app / Groq key pool / groq-cli / Groq AI Studio task.
 ---
+
+## THE RULE: teach Queen (Marko, 12.11.2026, enforced)
+
+Every task Marko asks of or through Queen ends with Queen able to do it alone: a skill file in
+`queen_skills/<name>.md` (when, steps, routes, checks, traps; loaded into her system prompt every turn), the route or
+local chat command it needs, a test by asking her in her own chat, `./install.sh`, restart, push to main.
+MANTRA_MANIFEST modules/teach-queen.md. Her skills so far: see `queen_skills/`.
+
+## Local Claude Code first, never API credits without his yes (Marko, 12.11.2026)
+
+Queen reaches the local Claude Code (headless `claude -p`, claude.ai plan) through `/api/claude/*` and the chat line
+`ask claude <q>`; Claude sessions reach her through `queen "<q>"`. Every Anthropic/Google API path (`/api/brain/escalate`,
+`/api/auto_update/run`) goes local first; unreachable -> "I cannot reach the local Claude Code. Do you want to use API
+credits?" (409 need_consent), API only with `allow_api: true` after his yes. Start Queen without the CLAUDE* env of a session.
+MANTRA_MANIFEST modules/queen-local-claude-first.md.
 # Groq AI Studio
 
 **Note:** "Queen" = `qwen` command. When Marko says "Queen", he means this qwen application.
@@ -52,7 +67,8 @@ The app can update its own source files through a chunked transfer system:
 | GET/POST | `/api/chats/*` | Chat persistence |
 | GET/POST | `/api/self_update/*` | Self-update pipeline (chunk dispatcher) |
 | GET/POST | `/api/auto_update/*` | Surgical Auto-Update Pipeline (`Google` Gemini / `Anthropic` Claude switch, models, keys, 6-stage SSE runner, USD ledger) |
-| GET/POST | `/api/github/*` | GitHub reader |
+| GET/POST | `/api/github/*` | GitHub reader (one file at a time, 🐙) |
+| GET | `/api/repo/list\|status\|sync\|tree\|read\|search` | Repo reader, READ ONLY: local mirror, tree, read (line ranges), search (regex, context, `repo=all`); chat: `tree R`, `read R:path`, `search R for x`, `sync R` (12.11.2026) |
 | GET | `/api/models` | Available models + live/catalog pricing |
 | GET | `/api/billing` | Spend + rate limits |
 | GET/POST | `/api/star/*` | Star Menu & Startup 55-app computer control (`STAR_API` `:8863`) |

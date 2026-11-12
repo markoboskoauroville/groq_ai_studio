@@ -1,5 +1,12 @@
 # Groq AI Studio: takeover
 
+
+## THE RULE: teach Queen (Marko, 12.11.2026, enforced)
+
+"Every time I ask you to do something through Queen, you need to teach her, you need to write a skill so next time if I
+ask directly, she's able to do it without you." Nothing done through Queen is finished until she can do it alone:
+a skill file in `queen_skills/<name>.md` (read into her system prompt every turn), the route or chat command it needs,
+tested by asking her in her own chat, installed, restarted, pushed. Full rule: MANTRA_MANIFEST modules/teach-queen.md.
 Repository: markoboskoauroville/groq_ai_studio (public, unpromoted: no README, no description; this file is the description).
 Status 11.11.2026: version v4 runs on this Mac, port 8765, `/health` answers `{"app":"groq-modern-chat","version":"v4","ok":true}`.
 Marko, 11.11.2026: "We are developing this app now." Nothing is compiled: it is Python and one HTML file, so there is no
@@ -131,3 +138,16 @@ Guards: path escapes and `.git` refused; `.env`, keys, certificates and files na
 are never read or listed in search hits; repos over 400 MB need `big=1`. Chat, answered locally at cost 0:
 `tree R [under P]`, `read R:path [lines A-B]`, `search R for text`, `sync R`. Default branch only.
 The older 🐙 panel (`/api/github/*`) stays for attaching one file to a chat.
+
+## Queen <-> local Claude Code, local first (12.11.2026)
+
+Marko: "If there is a local connection with you, Claude Code, that's the priority. If it's missing, she's asking, 'I cannot
+reach the local Claude Code. Do you want to use API credits?'" `qwen_app/claude_link.py`: `GET /api/claude/status | sessions |
+transcript?sid=`, `POST /api/claude/ask {question}` (headless `claude -p` on the claude.ai plan, ANTHROPIC_API_KEY and the
+parent session's CLAUDE* variables removed, Bash disallowed for plain questions, a note so it answers only),
+`POST /api/claude/tell {sid,text}` (types into a live session's tab). Chat: `ask claude <q>`, `list sessions`.
+The gate `claude_link.route(allow_api)` guards every paid path: `/api/brain/escalate` and `/api/auto_update/run` go to the
+local Claude Code (the update runs headless in this repo with acceptEdits and a fixed tool list, no commit, no push);
+unreachable -> 409 need_consent with Marko's sentence; `allow_api: true` only after his yes.
+The other way: `queen "<question>"`, `queen skills`, `queen status` (hub tools/queen, on the PATH).
+Queen must be started WITHOUT the CLAUDE* variables of a Claude session (env -u ...), see LESSONS.

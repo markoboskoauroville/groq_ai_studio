@@ -237,41 +237,35 @@ def brain_escalate():
         return jsonify(error="no goal"), 400
     tried, error = body.get("tried") or "", body.get("error") or ""
 
-    try:
-        from auto_updater import load_keys                           # the Anthropic key already configured
-        keys = (load_keys() or {}).get("anthropic") or []
-    except Exception:
-        keys = []
-    if not keys:
-        return jsonify(error="no Anthropic key configured: add one in the Auto-Update panel"), 503
-
-    try:
-        import anthropic
-    except Exception as exc:
-        return jsonify(error=f"the anthropic package is not installed: {exc}"), 503
-
     ask = (f"I am Queen, a local assistant on a Mac. I tried this twice and failed, so I am asking you.\n\n"
            f"GOAL\n{goal}\n\nWHAT I TRIED\n{tried}\n\nWHAT WENT WRONG\n{error}\n\n"
            f"Give me: 1) the corrected approach, concretely; 2) the one rule I should remember so I never repeat "
            f"this. Answer as JSON: {{\"solution\": \"...\", \"rule\": \"...\"}}")
-    try:
-        msg = anthropic.Anthropic(api_key=keys[0]).messages.create(
-            model=os.environ.get("BRAIN_ESCALATION_MODEL", "claude-sonnet-5-5"),
-            max_tokens=4000,
-            messages=[{"role": "user", "content": ask}])
-    except Exception as exc:
-        return jsonify(error=f"Claude did not answer: {exc}"), 502
 
-    text = "".join(b.text for b in msg.content if getattr(b, "type", "") == "text")
+    # Marko, 12.11.2026: local Claude Code first; API credits only with his yes (claude_link.py).
+    import claude_link
+    allow_api = bool(body.get("allow_api"))
+    try:
+        how = claude_link.route(allow_api)
+    except claude_link.NeedConsent as exc:
+        return jsonify(ok=False, need_consent=True, message=str(exc)), 409
+    usd = None
+    if how == "local":
+        try:
+            got_local = claude_link.ask(ask)
+        except Exception as exc:
+            return jsonify(error=f"local Claude Code did not answer: {exc}"), 502
+        text, model_used, usd = got_local["answer"], "local Claude Code (plan)", 0.0
+    else:
+        try:
+            text, model_used, usd = _anthropic_answer(ask)
+        except Exception as exc:
+            return jsonify(error=str(exc)), 502
     got = extract_json(text) or {"solution": text, "rule": ""}
     record = {"goal": goal, "tried": tried, "error": error,
               "solution": got.get("solution", ""), "rule": got.get("rule", ""),
-              "model": msg.model, "when": time.strftime("%Y-%m-%d %H:%M"),
-              "usd": None}
-    try:
-        record["usd"] = round(msg.usage.input_tokens / 1e6 * 2.0 + msg.usage.output_tokens / 1e6 * 10.0, 6)
-    except Exception:
-        pass
+              "model": model_used, "via": how, "when": time.strftime("%Y-%m-%d %H:%M"),
+              "usd": usd}
     hist = _load(ESCALATIONS, [])
     hist.append(record)
     _save(ESCALATIONS, hist)
@@ -283,3 +277,26 @@ def brain_escalate():
                    "note": f'{error} -> {got["rule"]}', "when": time.strftime("%Y-%m-%d %H:%M")})
         _save(TRAINING, ex)
     return jsonify(ok=True, **record)
+
+
+def _anthropic_answer(prompt):
+    """The Anthropic API, only after Marko said yes to API credits. Returns (text, model, usd)."""
+    from auto_updater import load_keys                           # the Anthropic key already configured
+    keys = (load_keys() or {}).get("anthropic") or []
+    if not keys:
+        raise RuntimeError("no Anthropic key configured: add one in the Auto-Update panel")
+    import anthropic
+    msg = anthropic.Anthropic(api_key=keys[0]).messages.create(
+        model=os.environ.get("BRAIN_ESCALATION_MODEL", "claude-sonnet-5-5"),
+        max_tokens=4000, messages=[{"role": "user", "content": prompt}])
+    text = "".join(b.text for b in msg.content if getattr(b, "type", "") == "text")
+    try:
+        usd = round(msg.usage.input_tokens / 1e6 * 2.0 + msg.usage.output_tokens / 1e6 * 10.0, 6)
+    except Exception:
+        usd = None
+    return text, msg.model, usd
+
+
+def escalate_text(question):
+    """Chat path after Marko's explicit 'with API credits': one answer from the Anthropic API."""
+    return _anthropic_answer(question)[0]

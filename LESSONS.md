@@ -64,3 +64,21 @@
 - **12.11.2026, rules are weaker than an example.** Naming the three Chrome mistakes in the system prompt fixed them
   only while the channel was feeding the model its own earlier answers. A short worked example of a complete correct
   extension did the real work.
+
+12.11.2026, the rule that outranks the rest: teach Queen
+- Marko: "Every time I ask you to do something through Queen, you need to teach her, you need to write a skill so next time
+  if I ask directly, she's able to do it without you." Claude Code finding the way once is fine; leaving the way only in a
+  Claude transcript is not. Every task ends with `queen_skills/<name>.md` + its route/chat command + a test through her chat.
+- Her model only writes text. A skill that needs action needs a route (her hands), not just a paragraph in her prompt.
+- Her eyes lie in a specific way: asked "is the whole band here?", Qwen 3.6 said yes to concerts/img/10.jpg, an AI
+  illustration with other people in it. A count is not an identity: compare against a verified reference photo.
+- Groq lists no Llama-4/vision model on this account, but Qwen 3.6/3.8 take image_url and see well (counts, instruments,
+  left-to-right). Nothing had to be enabled: /api/vision/ask.
+- 12.11.2026, the hub's SessionEnd hook `exit_all.sh` killed Queen: it ends the shell above `claude` when a session closes, and
+  for a headless `claude -p` started by Queen that "shell" was Queen herself (SIGTERM, then SIGKILL a second later: no log line).
+  Fixed in the hook: never for a -p/--print run, and only a real shell (zsh, bash, login...). Same cause as a nested
+  `claude -p` in a Claude Code Bash tool dying with exit 144.
+- A headless Claude still reads Marko's CLAUDE.md and tries to speak every answer (langsay). --append-system-prompt alone
+  did not stop it; removing Bash (--disallowedTools Bash) for plain questions did.
+- `--bare` would skip the hooks, but it accepts only ANTHROPIC_API_KEY (never the claude.ai login): that is API credits. Not used.
+- One headless question costs about 70k context tokens of the plan (hooks + CLAUDE.md) and 3-10 s; no API money.
