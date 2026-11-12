@@ -559,6 +559,21 @@ try:
 except Exception as _cl_exc:
     print(f"[claude_link] not loaded: {_cl_exc}")
 
+# Skill: band posters (12.11.2026): next concert + whole-band photos (her eyes) -> Affinity posters, unsaved tabs.
+try:
+    from poster_skill import register as _register_posters
+    _register_posters(app, pool, record_spend)
+    from poster_skill import register_like as _register_poster_like
+    _register_poster_like(app, pool, record_spend)
+    from poster_skill import register_gemini_versions as _register_gemini_posters
+    _register_gemini_posters(app, pool, record_spend)
+    from gemini_skill import register as _register_gemini
+    _register_gemini(app)
+    from describe_skill import register as _register_describe
+    _register_describe(app, pool, record_spend)
+except Exception as _ps_exc:
+    print(f"[poster_skill] not loaded: {_ps_exc}")
+
 
 def _is_trusted_local_origin(hdr_url: str) -> bool:
     """Return True if Origin/Referer points to 127.0.0.1 or localhost."""
@@ -876,9 +891,23 @@ def chat():
         if not local_answer:
             from claude_link import chat_claude_command
             local_answer = chat_claude_command(last_user_text)
+        if not local_answer:
+            from describe_skill import chat_describe_command
+            local_answer = chat_describe_command(last_user_text, pool, record_spend)
+        if not local_answer:
+            from poster_skill import chat_gemini_command
+            local_answer = chat_gemini_command(last_user_text, pool, record_spend)
+        if not local_answer:
+            from poster_skill import chat_like_command
+            local_answer = chat_like_command(last_user_text, pool, record_spend)
+        if not local_answer:
+            from poster_skill import chat_poster_command
+            local_answer = chat_poster_command(last_user_text, pool, record_spend)
     except Exception as _exc:
-        local_answer = None
-        print(f"[affinity] chat command skipped: {_exc}")
+        # 12.11.2026: a skill that failed fell through to the model, which then pretended to be working ("This will take
+        # a few minutes ... 🎨"). A failed skill says it failed, with the reason; the model is not asked to cover for it.
+        local_answer = f"The skill failed, nothing was made: {type(_exc).__name__}: {_exc}"
+        print(f"[skills] chat command failed: {_exc}", flush=True)
     if local_answer:
         def local_stream():
             yield json.dumps({"t": local_answer}) + "\n"

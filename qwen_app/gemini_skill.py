@@ -1,0 +1,351 @@
+"""Queen's hands in Gemini (free, Marko's Chrome, account marko.bosko@auroville.community), 12.11.2026.
+
+Marko: "this photo is not good quality ... she needs to create a photo in Google Gemini for free ... The poster is vertical,
+the photo is horizontal ... we are missing the parts of the photo. Let her take this inside Gemini and then make what is
+missing to be extended." Then: "after generating the new, better image with AI, which fills the whole frame, she needs to
+create English and Croatian posters, two versions."
+
+The manifest's Gemini rules (MANTRA_MANIFEST modules/gemini-image-jobs.md) are kept:
+  - only in Chrome, only signed in as marko.bosko@auroville.community: checked on the page before anything is sent;
+  - the reference attached as a file (here through Chrome's own DevTools protocol: a file input filled with
+    DOM.setFileInputFiles, then pasted into the prompt box, the way the manifest's §0 road does it);
+  - the result taken as a SCREENSHOT of the image (Page.captureScreenshot, clipped to the picture, scaled to its real
+    size), never through Gemini's download button;
+  - one image at a time, one tab, the tab closed afterwards;
+  - Marko, 12.11.2026: "When you exhaust one account from the Chrome browser, you just switch to another profile and then
+    continue there." auroville.community first, then his other Google profiles (Local State), the band account last;
+    a profile whose window is not open is opened (open -na "Google Chrome" --args --profile-directory=...).
+Chrome must have remote debugging on (chrome://inspect/#remote-debugging; the port and path are in DevToolsActivePort).
+
+    POST /api/gemini/image {prompt, image: path, out: path, account?}  -> {ok, out, width, height}
+"""
+import base64
+import json
+import os
+import time
+from pathlib import Path
+
+from flask import jsonify, request
+
+ACCOUNT = "marko.bosko@auroville.community"
+PORT_FILE = Path.home() / "Library" / "Application Support" / "Google" / "Chrome" / "DevToolsActivePort"
+
+
+class GeminiError(Exception):
+    pass
+
+
+class Exhausted(GeminiError):
+    """This account cannot make the image now (daily limit, or no image editing on it): try the next profile."""
+
+
+LOCAL_STATE = Path.home() / "Library" / "Application Support" / "Google" / "Chrome" / "Local State"
+LIMIT_WORDS = r"limit|try again (later|tomorrow)|come back later|too many|quota|can't (edit|create|generate)|cannot (edit|create|generate)|not able to (edit|create)|unable to (edit|create)"
+
+
+def profiles(first=ACCOUNT):
+    """(email, profile directory) of every Chrome profile signed in to Google: `first`, then the rest, the band last."""
+    try:
+        cache = json.loads(LOCAL_STATE.read_text())["profile"]["info_cache"]
+    except Exception:
+        return [(first, None)]
+    out = [(v["user_name"], k) for k, v in cache.items() if v.get("user_name")]
+    rank = lambda e: (0 if e[0] == first else 2 if "santoshi" in e[0] else 1, e[0])  # noqa: E731
+    return sorted(out, key=rank)
+
+
+class CDP:
+    def __init__(self):
+        import websocket  # noqa: PLC0415
+        if not PORT_FILE.exists():
+            raise GeminiError("Chrome remote debugging is off: chrome://inspect/#remote-debugging")
+        port, path = PORT_FILE.read_text().split()[:2]
+        # Chrome asks "Allow remote debugging?" for this connection; Marko is often away, so Macro Recorder presses Allow
+        # in natural motion (MACRO_SKILLS tools/chrome_allow_debugging.py). The watcher runs ONLY while this connection
+        # opens, so no other app's request is approved by it.
+        import threading  # noqa: PLC0415
+        stop, self.allow_log = threading.Event(), []
+        watcher = None
+        try:
+            import importlib.util  # noqa: PLC0415
+            spec = importlib.util.spec_from_file_location(
+                "chrome_allow", Path.home() / "Developer" / "MACRO_SKILLS" / "tools" / "chrome_allow_debugging.py")
+            allow = importlib.util.module_from_spec(spec)
+            spec.loader.exec_module(allow)
+            watcher = threading.Thread(target=lambda: self.allow_log.extend(allow.watch(45, 3, stop)), daemon=True)
+            watcher.start()
+        except Exception as exc:
+            self.allow_log.append(f"watcher not started: {exc}")
+        try:
+            self.ws = websocket.create_connection(f"ws://127.0.0.1:{port}{path}", timeout=45, suppress_origin=True)
+        except Exception as exc:
+            raise GeminiError(f"cannot reach Chrome's DevTools on {port}: {exc} {self.allow_log}")
+        finally:
+            stop.set()
+            if watcher:
+                watcher.join(timeout=5)
+        self.n = 0
+        self.events = []
+
+    def send(self, method, params=None, session=None, timeout=60):
+        self.n += 1
+        mid = self.n
+        msg = {"id": mid, "method": method, "params": params or {}}
+        if session:
+            msg["sessionId"] = session
+        self.ws.send(json.dumps(msg))
+        end = time.time() + timeout
+        while time.time() < end:
+            self.ws.settimeout(max(1, end - time.time()))
+            m = json.loads(self.ws.recv())
+            if m.get("id") == mid:
+                if "error" in m:
+                    raise GeminiError(f"{method}: {m['error'].get('message')}")
+                return m.get("result", {})
+            self.events.append(m)
+        raise GeminiError(f"{method}: no answer in {timeout}s")
+
+    def wait_event(self, method, timeout=10):
+        end = time.time() + timeout
+        while time.time() < end:
+            for e in self.events:
+                if e.get("method") == method:
+                    self.events.remove(e)
+                    return e
+            try:
+                self.ws.settimeout(1)
+                self.events.append(json.loads(self.ws.recv()))
+            except Exception:
+                pass
+        return None
+
+    def js(self, session, expr, timeout=60):
+        r = self.send("Runtime.evaluate", {"expression": expr, "returnByValue": True, "awaitPromise": True},
+                      session, timeout)
+        if r.get("exceptionDetails"):
+            raise GeminiError("page script: " + str(r["exceptionDetails"].get("exception", {}).get("description", ""))[:300])
+        return r.get("result", {}).get("value")
+
+    def close(self):
+        try:
+            self.ws.close()
+        except Exception:
+            pass
+
+
+def _context_of_account(cdp):
+    """The browserContext (Chrome profile) whose pages are open; Gemini itself tells which account it is."""
+    ts = cdp.send("Target.getTargets")["targetInfos"]
+    return sorted({t.get("browserContextId") for t in ts if t["type"] == "page" and t.get("browserContextId")})
+
+
+def make_image(prompt, image_path, out_path, account=ACCOUNT, wait=180, max_accounts=4):
+    """Try the accounts in order; an exhausted one hands over to the next profile."""
+    image_path = Path(image_path).expanduser()
+    if not image_path.is_file():
+        raise GeminiError(f"no image {image_path}")
+    tried = []
+    for email, pdir in profiles(account)[:max_accounts]:
+        try:
+            r = _make_with(prompt, image_path, out_path, email, pdir, wait)
+            r["tried"] = tried + [email]
+            return r
+        except Exhausted as exc:
+            tried.append(f"{email}: {str(exc)[:120]}")
+            continue
+        except GeminiError as exc:
+            # Marko, 12.11.2026: "if images are not generating, if there is a timeout, or if they are not generating
+            # after a few minutes, you need to go to the next profile." Only a closed DevTools port stops everything.
+            if "remote debugging is off" in str(exc) or "cannot reach Chrome" in str(exc):
+                raise
+            tried.append(f"{email}: {str(exc)[:120]}")
+            continue
+    raise GeminiError("every account tried is exhausted: " + " | ".join(tried))
+
+
+WHO_JS = ("(() => { const a=[...document.querySelectorAll('[aria-label]')].map(e=>e.getAttribute('aria-label'))"
+          ".find(s=>/@/.test(s||'')); return a||''; })()")
+PREVIEW_JS = ("(() => document.querySelectorAll('uploader-file-preview, file-preview, .file-preview-container, "
+              "img[src^=\"blob:\"]').length)()")
+
+
+def _default_ctx(cdp):
+    return cdp.send("Target.getBrowserContexts").get("defaultBrowserContextId")
+
+
+def _make_default(cdp, pdir, opened):
+    """DevTools makes tabs only in Chrome's DEFAULT context, which follows the most recently opened profile window
+    (tested 12.11.2026: createTarget with another profile's context id fails). So the wanted profile gets a window."""
+    import subprocess  # noqa: PLC0415
+    before = _default_ctx(cdp)
+    subprocess.run(["open", "-na", "Google Chrome", "--args", f"--profile-directory={pdir}", "about:blank"], check=False)
+    for _ in range(30):
+        time.sleep(0.5)
+        now = _default_ctx(cdp)
+        if now and now != before:
+            break
+    # every tab that appeared in the profile just opened is Queen's to close afterwards: the blank one, and anything the
+    # profile opens by itself at start (an extension's "Updated" page kept father.aya's window open on 12.11.2026)
+    time.sleep(2)
+    now = _default_ctx(cdp)
+    for t in cdp.send("Target.getTargets")["targetInfos"]:
+        if t["type"] == "page" and now and t.get("browserContextId") == now and now != before:
+            opened.append(t["targetId"])
+
+
+def _gemini_tab(cdp, account):
+    t = cdp.send("Target.createTarget", {"url": "https://gemini.google.com/app", "background": True})
+    tid = t["targetId"]
+    sess = cdp.send("Target.attachToTarget", {"targetId": tid, "flatten": True})["sessionId"]
+    for dom in ("Page.enable", "Runtime.enable", "DOM.enable"):
+        cdp.send(dom, session=sess)
+    # A background tab is not focused, and Gemini's upload menu then never opens (tested 12.11.2026). Focus emulation
+    # makes the tab behave as focused without bringing it in front of Marko.
+    cdp.send("Emulation.setFocusEmulationEnabled", {"enabled": True}, sess)
+    who = ""
+    for _ in range(40):
+        time.sleep(0.5)
+        who = cdp.js(sess, WHO_JS) or ""
+        if who and cdp.js(sess, "!!document.querySelector('rich-textarea .ql-editor')"):
+            break
+    return tid, sess, who
+
+
+def _trusted_click(cdp, sess, rect_js):
+    """A real (trusted) click from DevTools at the element's centre: Gemini's upload menu ignores script clicks."""
+    r = cdp.js(sess, rect_js)
+    if not r:
+        return None
+    x, y = r["x"] + r["w"] / 2, r["y"] + r["h"] / 2
+    for ty in ("mouseMoved", "mousePressed", "mouseReleased"):
+        cdp.send("Input.dispatchMouseEvent", {"type": ty, "x": x, "y": y, "button": "left", "clickCount": 1}, sess)
+    return r
+
+
+def _attach(cdp, sess, image_path):
+    """Gemini's own upload: '+' (Upload and tools) -> 'Upload files' -> Chrome's file chooser, answered by DevTools.
+    A synthetic paste or drop is ignored by Gemini (both tested 12.11.2026)."""
+    cdp.send("Page.setInterceptFileChooserDialog", {"enabled": True}, sess)
+    cdp.events.clear()
+    plus = _trusted_click(cdp, sess, "(() => { const b=[...document.querySelectorAll('button')].find(b=>/upload and tools|upload|attach/i"
+                                     ".test(b.getAttribute('aria-label')||'')); if(!b) return null; const r=b.getBoundingClientRect();"
+                                     " return {x:r.x,y:r.y,w:r.width,h:r.height}; })()")
+    if not plus:
+        raise GeminiError("no upload button on the Gemini page")
+    item = None
+    item_js = ("(() => { const e=[...document.querySelectorAll('[role=menuitem], button')].find(b=>{const t=(b.innerText||'')"
+               ".trim(); return t.length<40 && /upload files?/i.test(t);}); if(!e) return null; const r=e.getBoundingClientRect();"
+               " return r.width ? {x:r.x,y:r.y,w:r.width,h:r.height} : null; })()")
+    for attempt in range(2):                 # the menu can take a moment, or the first click can land before the page is ready
+        for _ in range(10):
+            time.sleep(0.5)
+            if cdp.js(sess, item_js):
+                break
+        item = _trusted_click(cdp, sess, item_js)
+        if item:
+            break
+        _trusted_click(cdp, sess, "(() => { const b=[...document.querySelectorAll('button')].find(b=>/upload and tools|upload|attach/i"
+                                  ".test(b.getAttribute('aria-label')||'')); if(!b) return null; const r=b.getBoundingClientRect();"
+                                  " return {x:r.x,y:r.y,w:r.width,h:r.height}; })()")
+    if not item:
+        raise GeminiError("no 'Upload files' item in Gemini's menu")
+    ev = cdp.wait_event("Page.fileChooserOpened", 10)
+    if not ev:
+        raise GeminiError("Gemini's file chooser did not open")
+    cdp.send("DOM.setFileInputFiles", {"files": [str(image_path)], "backendNodeId": ev["params"]["backendNodeId"]}, sess)
+    for _ in range(40):
+        time.sleep(0.5)
+        if cdp.js(sess, PREVIEW_JS):
+            return True
+    raise GeminiError("the photo did not attach in Gemini")
+
+
+def _make_with(prompt, image_path, out_path, account, pdir, wait=180):
+    cdp = CDP()
+    tid, opened = None, []
+    try:
+        tid, sess, who = _gemini_tab(cdp, account)
+        if account.lower() not in who.lower():
+            cdp.send("Target.closeTarget", {"targetId": tid})
+            tid = None
+            if not pdir:
+                raise Exhausted(f"Gemini is signed in as {who!r}, not {account}")
+            _make_default(cdp, pdir, opened)
+            tid, sess, who = _gemini_tab(cdp, account)
+            if account.lower() not in who.lower():
+                raise Exhausted(f"could not reach Gemini as {account} (got {who!r})")
+
+        # 1. the reference, through Gemini's own upload
+        _attach(cdp, sess, image_path)
+
+        # 2. the prompt, typed, then sent
+        cdp.js(sess, "document.querySelector('rich-textarea .ql-editor').focus()")
+        cdp.send("Input.insertText", {"text": prompt}, sess)
+        time.sleep(0.8)
+        sent = _trusted_click(cdp, sess, "(() => { const b=document.querySelector('button.send-button, button[aria-label*=\"Send\"]');"
+                                         " if(!b || b.disabled) return null; const r=b.getBoundingClientRect();"
+                                         " return {x:r.x,y:r.y,w:r.width,h:r.height}; })()")
+        if not sent:
+            raise GeminiError("the Send button was not ready")
+
+        # 3. wait for the generated picture in the answer
+        found = None
+        end = time.time() + wait
+        while time.time() < end:
+            time.sleep(2)
+            found = cdp.js(sess, "(() => { const im=[...document.querySelectorAll('model-response img, generated-image img, single-image img')]"
+                                 ".filter(i=>i.naturalWidth>400 && i.complete); if(!im.length) return null; const i=im[im.length-1];"
+                                 "i.scrollIntoView({block:'center'}); const r=i.getBoundingClientRect();"
+                                 "return {x:r.x,y:r.y,w:r.width,h:r.height,nw:i.naturalWidth,nh:i.naturalHeight}; })()")
+            if found:
+                time.sleep(1.5)
+                found = cdp.js(sess, "(() => { const im=[...document.querySelectorAll('model-response img, generated-image img, single-image img')]"
+                                     ".filter(i=>i.naturalWidth>400 && i.complete); const i=im[im.length-1]; const r=i.getBoundingClientRect();"
+                                     "return {x:r.x,y:r.y,w:r.width,h:r.height,nw:i.naturalWidth,nh:i.naturalHeight}; })()")
+                break
+            said = cdp.js(sess, "(() => { const m=[...document.querySelectorAll('model-response')]; if(!m.length) return '';"
+                                " const last=m[m.length-1]; const done=!last.querySelector('.loading, [aria-busy=true]');"
+                                " return done ? (last.innerText||'') : ''; })()") or ""
+            import re  # noqa: PLC0415
+            if said and re.search(LIMIT_WORDS, said, re.I) and len(said) < 1200:
+                raise Exhausted("Gemini: " + said[:200])
+        if not found:
+            raise Exhausted(f"no image from Gemini in {wait}s")
+
+        # 4. the screenshot of the picture, at its real size
+        scale = max(1.0, found["nw"] / max(1, found["w"]))
+        shot = cdp.send("Page.captureScreenshot", {"format": "png", "captureBeyondViewport": True,
+                                                   "clip": {"x": found["x"], "y": found["y"], "width": found["w"],
+                                                            "height": found["h"], "scale": scale}}, sess, timeout=90)
+        out = Path(out_path).expanduser()
+        out.parent.mkdir(parents=True, exist_ok=True)
+        out.write_bytes(base64.b64decode(shot["data"]))
+        return {"out": str(out), "width": round(found["w"] * scale), "height": round(found["h"] * scale),
+                "natural": [found["nw"], found["nh"]], "account": account, "profile": pdir}
+    finally:
+        for t in ([tid] if tid else []) + opened:          # close what was opened: the Gemini tab and any profile window
+            try:
+                cdp.send("Target.closeTarget", {"targetId": t})
+            except Exception:
+                pass
+        cdp.close()
+
+
+def register(app):
+    @app.post("/api/gemini/image")
+    def gemini_image():
+        d = request.get_json(silent=True) or {}
+        try:
+            return jsonify(ok=True, **make_image(d.get("prompt", ""), d.get("image", ""), d.get("out", ""),
+                                                 d.get("account") or ACCOUNT, int(d.get("wait") or 180)))
+        except GeminiError as exc:
+            return jsonify(ok=False, error=str(exc)), 400
+        except Exception as exc:
+            return jsonify(ok=False, error=f"{type(exc).__name__}: {exc}"), 500
+    return app
+
+
+if __name__ == "__main__":       # a manual test: python3 gemini_skill.py <image> <out> "<prompt>"
+    import sys
+    print(json.dumps(make_image(sys.argv[3], sys.argv[1], sys.argv[2]), indent=1))
+    os._exit(0)

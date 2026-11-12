@@ -82,3 +82,31 @@
   did not stop it; removing Bash (--disallowedTools Bash) for plain questions did.
 - `--bare` would skip the hooks, but it accepts only ANTHROPIC_API_KEY (never the claude.ai login): that is API credits. Not used.
 - One headless question costs about 70k context tokens of the plan (hooks + CLAUDE.md) and 3-10 s; no API money.
+- 12.11.2026, posters: a colour's alpha is ignored by a shape's brush fill; transparency is `doc.setOpacity(value, node)`.
+  Text colour is `StoryDelta.createBrushFill(FillDescriptor.createSolid(colour, BlendMode.Normal))`; centring is
+  `StoryDelta.createAlignX(ParagraphAlignXType.Centre)`; Affinity's enums are native objects (JSON.stringify shows
+  nothing: list them with Object.getOwnPropertyNames).
+- A text band on the top of a stage photo covered every face: the band sits where the faces are not, which only her eyes
+  can tell (people_top / people_bottom / free_area).
+- Text overflowed the page (text_end 1256 on a 1200 px page): sizes are fitted to the band and each line to the width.
+- Two images in one question (reference + candidate) confused Qwen ("a collage", 7 counted where 6 were). One image with the
+  seven described people answered right on all four test photos.
+
+12.11.2026, evening: Gemini by DevTools, the traps (each one cost a failed run)
+- Chrome asks "Allow remote debugging?" for every new DevTools client; unanswered, the connection times out (30 s) and the
+  skill failed. Now Macro Recorder presses Allow in natural motion while (and only while) Queen connects
+  (MACRO_SKILLS tools/chrome_allow_debugging.py, catalogue chrome-allow-remote-debugging). Proven unattended.
+- A skill exception fell through to the model, which answered "This will take a few minutes ... 🎨". Failed skills now
+  answer with the error. Never let the model cover for a tool.
+- Gemini ignores a synthetic paste AND a synthetic drop. What works: trusted DevTools clicks on "Upload and tools" ->
+  "Upload files", Page.setInterceptFileChooserDialog, DOM.setFileInputFiles on the chooser's backendNodeId.
+- That menu never opens in a background tab until Emulation.setFocusEmulationEnabled(true): the tab then behaves as
+  focused, nothing comes in front of Marko.
+- DevTools creates tabs only in Chrome's DEFAULT context = the profile whose window opened last. A profile is chosen by
+  opening its window (open -na ... --profile-directory=X); every tab of that window is closed afterwards, or the profile
+  stays the default (father.aya's ad-blocker "Updated" page kept it so).
+- Saving a poster over a file that is open in another Affinity tab fails silently (~lock~): new names get whole-number
+  versions (v2, v3), and existing versions are skipped unless force.
+- Affinity scripts may touch the Desktop only (Pictures denied, even through a symlink): stage on the Desktop, keep in Pictures.
+- Gemini's picture came back 765 x 1024: enough for screens, soft for print. For print, ask Gemini for "high resolution" or
+  upscale outside Canva's paid tools.

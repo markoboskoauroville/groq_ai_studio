@@ -151,3 +151,32 @@ local Claude Code (the update runs headless in this repo with acceptEdits and a 
 unreachable -> 409 need_consent with Marko's sentence; `allow_api: true` only after his yes.
 The other way: `queen "<question>"`, `queen skills`, `queen status` (hub tools/queen, on the PATH).
 Queen must be started WITHOUT the CLAUDE* variables of a Claude session (env -u ...), see LESSONS.
+
+## Queen's eyes and the band-poster skill (12.11.2026)
+
+- `qwen_app/vision.py`: `POST /api/vision/ask {question, path | repo+file | url, json}` sends the picture as an image_url to her
+  own Qwen 3.6 (Groq has no Llama-4/vision model on this account; Qwen reads images). Cost into her ledger (~$0.004 a look).
+- `qwen_app/poster_skill.py`: `POST /api/skills/band-posters {profile, max, dry_run}`, chat "make posters for the next Santoshi
+  concert". Next event from santoshi_band_site/events.json; every band photo checked by her eyes against the seven members
+  described by look (`queen_skills/santoshi_band.json`, from the verified photo img/photos/6829.jpg); only real photographs
+  with all seven; one Affinity document per photo (the photo's own proportions, width 1800), a 55% dark band where no faces
+  are, the text centred and scaled to fit; tabs left open, NOTHING saved. Answers cached in ~/.groq/skill_cache.
+  Source photos are copied to ~/Desktop/Queen poster photos (Affinity scripts read the Desktop only).
+- Skills folder: `queen_skills/*.md` read into her system prompt every turn; `*.json` profiles beside them (installed by install.sh).
+
+## Gemini, the project folder, saved posters, the image catalogue (12.11.2026, evening)
+
+- `qwen_app/gemini_skill.py`, `POST /api/gemini/image {prompt, image, out}`: Gemini in Marko's Chrome over the DevTools port
+  (DevToolsActivePort gives port and path; /json is closed in this Chrome, the browser WebSocket works). The account is read
+  on the page; the reference is attached through a file input filled by DOM.setFileInputFiles and pasted into the prompt;
+  the result is a clipped Page.captureScreenshot at the picture's real size. Profiles in order (Local State):
+  auroville.community first, the band account last; exhausted, refused, timed out (3 min) -> next profile, window opened
+  if needed; at most four per picture.
+- Project folder: ~/Pictures/<YYYY-MM-DD> <project>/ keeps every photo, Gemini picture and poster (.af layered + .png).
+  Affinity can only read/write the Desktop (PERMISSION_DENIED on ~/Pictures, also through a symlink), so it works in
+  ~/Desktop/Queen Affinity work/<same name>/ and everything is copied into Pictures (`project_dirs`, `stage_file`,
+  `save_poster` in poster_skill.py; `Document.saveAs(path.af)` + `export(path.png, PNG preset)`).
+- `POST /api/skills/gemini-posters`: A4 full-bleed (Gemini's extension of the real photo) and three stripes (Gemini pink
+  lights / band photo / member portraits), English and Croatian, four posters.
+- `qwen_app/describe_skill.py`, `POST /api/skills/describe-images`: every image of a site repo described by her eyes into
+  an Excel workbook in the project folder: Index tab + one tab per image named after the file (openpyxl, in Queen's Python).

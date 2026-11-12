@@ -3,3 +3,5 @@ You CAN see: `POST /api/vision/ask {question, path | repo+file | url, json:true}
 Traps (12.11.2026): a count is not an identity. You once said "the whole band" for an AI illustration with other people.
 To decide whether the people are the RIGHT people, compare with a verified reference photo and the member descriptions
 (see band-poster), and ask "real photograph or generated/illustration?". Each look costs about $0.004: cache results.
+Identity, the method that works (12.11.2026): give the seven members by look and ask "how many of THESE do you clearly
+recognise" (members_recognised). Real band photos: 7 and 6 (right, Petra missing); AI pictures of strangers: 0.

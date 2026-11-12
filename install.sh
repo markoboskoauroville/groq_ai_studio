@@ -12,6 +12,6 @@ mkdir -p "${G}/qwen_app"
 # were written, imported, and silently missing from ~/.groq (12.11.2026, twice). Copy the lot.
 cp "${SRC}"/qwen_app/*.py "${SRC}/qwen_app/index.html" "${G}/qwen_app/"
 cp "${SRC}/groq_pool.py" "${SRC}/groq_cli.py" "${SRC}/qwen" "${SRC}/groq-chat" "${SRC}/groq-cli" "${SRC}/version.json" "${G}/"
-mkdir -p "${G}/queen_skills" && cp "${SRC}"/queen_skills/*.md "${G}/queen_skills/" 2>/dev/null || true   # Queen's skills (12.11.2026)
+mkdir -p "${G}/queen_skills" && cp "${SRC}"/queen_skills/*.md "${SRC}"/queen_skills/*.json "${G}/queen_skills/" 2>/dev/null || true   # Queen's skills (12.11.2026)
 chmod +x "${G}/qwen" "${G}/groq-chat" "${G}/groq-cli" "${G}/groq_cli.py"
 echo "Installed. Put ${G} on the PATH (export PATH=\"\$HOME/.groq:\$PATH\"), then run: qwen"

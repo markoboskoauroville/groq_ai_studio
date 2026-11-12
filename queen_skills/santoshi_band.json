@@ -1,0 +1,41 @@
+{
+ "band": "SANTOSHI kirtan band",
+ "repo": "santoshi_band_site",
+ "events_file": "events.json",
+ "photo_dirs": [
+  "img/photos",
+  "concerts/img",
+  "img/home",
+  "img/history",
+  "img/report",
+  "img/video",
+  "img/youtube"
+ ],
+ "skip_name_parts": [
+  "_t.",
+  "poster",
+  "logo",
+  "favicon",
+  "icon",
+  "og.",
+  "thumb",
+  "banner"
+ ],
+ "reference_photo": "img/photos/6829.jpg",
+ "members_by_look": [
+  "a bald man with a short beard in a brown plaid shirt playing an electric bass",
+  "a bald man in a white T-shirt playing a djembe (hand drum held between the knees)",
+  "a young man with short dark hair in a white T-shirt sitting low and playing a mridangam (long two-headed drum lying sideways)",
+  "a man with long dark hair and glasses in a dark blue top playing an acoustic guitar and singing",
+  "a woman with short dark hair in a blue-grey shirt, singing",
+  "an older bald man with a white beard, light shirt and white trousers, playing a nylon-string guitar",
+  "a woman with her hair tied back, dark brown top and jeans, playing a tambourine"
+ ],
+ "note": "Descriptions written 12.11.2026 from the verified photo img/photos/6829.jpg (all seven, checked by eye). Clothes change between concerts: if a whole-band photo from another evening is missed, add a second description set or check by eye.",
+ "poster_sources": {
+  "img/coming/2026-11-21.jpg": {
+   "photo": "img/photos/mcam4950.jpg",
+   "note": "Marko, 12.11.2026: the AI poster was made by enhancing this real photo (the band from behind, the audience in front). Chosen by Claude on his word: Queen's eyes did not understand 'from behind'. mcam6090 is the same moment but cuts the djembe player."
+  }
+ }
+}
