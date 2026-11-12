@@ -30,7 +30,7 @@ description: >-
 | **Installed Runtime Directory** | `~/.groq` | Deployed copy executed by `qwen`, `groq-chat`, and `groq-cli`. Created/synced by `./install.sh`. |
 | **Python Virtualenv** | `~/.groq/venv/bin/python` | Python 3 venv (`Flask`, `waitress`, `groq`, `httpx`, `python-dotenv`). |
 | **Backend Server Entry** | `qwen_app/app.py` | Flask + Waitress (`threads=8`, bound to `127.0.0.1:8765`, auto-increments up to `+200` if port busy). |
-| **Surgical Auto-Updater Module** | `qwen_app/auto_updater.py` | Dual-kind key parser, Google/Anthropic streaming clients, surgical patch engine, CI/git/deploy orchestrator, USD cost ledger. |
+| **Surgical Auto-Updater Module** | `qwen_app/auto_updater.py` | Dual-kind key parser (`gsk_`, `AIza` / `AQ.`, `sk-ant-`), Google/Anthropic streaming clients (`max_tokens=16000`), `#sidebar` + `app.py` symbol-aware surgical patch engine, CI/git/deploy orchestrator, USD cost ledger. |
 | **Frontend Single-Page App** | `qwen_app/index.html` | Complete CSS + HTML + vanilla JS client (`__VERSION__`, `__DEFAULT_MODEL__`, `__API_TOKEN__` injected by server). |
 | **Shared Groq Key Pool** | `groq_pool.py` | `DynamicKeyPool` (web server) + `KeyPool` (`groq-cli`) + `extract_keys_from_noise`. |
 | **Version Ledger** | `version.json` | `{"version": N, "updated_at": "...", "log": [...]}` — rendered as `vN` badge in `#topbar`. |

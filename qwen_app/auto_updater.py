@@ -741,16 +741,22 @@ def build_surgical_context(
         anchor_seeds = hit_indices[:10]
         low_inst = instruction.lower()
         if fname == "index.html":
-            want_sidebar = any(w in low_inst for w in ("sidebar", "column", "left", "tab", "conversation", "groq studio", "tester", "filter", "repo", "full-screen", "fullscreen", "panel", "load key"))
+            want_sidebar = any(w in low_inst for w in ("sidebar", "column", "left", "tab", "conversation", "groq studio", "tester", "filter", "repo", "full-screen", "fullscreen", "panel", "load key", "workspace", "developer"))
             for i, line in enumerate(lines):
                 if 'id="topbar"' in line or 'id="status-bar"' in line or "//  INIT" in line:
                     anchor_seeds.append(i)
                 if want_sidebar and (
                     "/* ══ SIDEBAR ══ */" in line
+                    or "#kt-stats-bar {" in line
+                    or ".side-top {" in line
+                    or "#workspace-split {" in line
                     or 'id="sidebar"' in line
                     or 'id="chat-pane"' in line
                     or 'id="engineer-pane"' in line
+                    or 'id="modal-elevate"' in line
+                    or "Select Watcher Board, WhatsApp" in line
                     or 'function renderSidebar' in line
+                    or "async function importKeyContent" in line
                     or "document.getElementById(\"btn-load-key-file\")" in line
                     or "//  KEY TESTER" in line
                     or "function renderKeyTesterResults" in line
@@ -765,6 +771,8 @@ def build_surgical_context(
                     or '@app.get("/api/version")' in line
                     or '@app.get("/api/keys")' in line
                     or '@app.post("/api/keys/import")' in line
+                    or "def import_keys():" in line
+                    or '"type": "keys_updated"' in line
                     or '@app.post("/api/reset-keys")' in line
                     or '@app.get("/api/key_tester/keys")' in line
                     or '@app.post("/api/key_tester/run")' in line
@@ -776,12 +784,12 @@ def build_surgical_context(
 
         for idx in sorted(set(anchor_seeds)):
             start = max(0, idx - 22)
-            end = min(total, idx + 45)
+            end = min(total, idx + 48)
             if windows and start <= windows[-1][1] + 8:
                 windows[-1] = (windows[-1][0], max(windows[-1][1], end))
             else:
                 windows.append((start, end))
-            if len(windows) >= 18:
+            if len(windows) >= 26:
                 break
 
         # Always include tail of file so appending routes/JS handlers is effortless
@@ -907,8 +915,61 @@ def _find_normalized_span(source: str, search: str, action: str = "replace") -> 
             end_char = sum(len(x) for x in src_lines[: i0 + n])
             return start_char, end_char
 
+    # Safe unique CSS rule / JS function `{ ... }` block fallback (handles single-line vs multi-line CSS/JS formatting)
+    non_empty_needle = [ln.strip() for ln in needle_lines if ln.strip()]
+    first_nonempty = non_empty_needle[0] if non_empty_needle else ""
+    last_nonempty = non_empty_needle[-1] if non_empty_needle else ""
+    if (
+        action in ("replace", "insert_before", "insert_after")
+        and len(first_nonempty) >= 7
+        and "{" in first_nonempty
+        and search.count("{") >= 1
+        and search.count("{") == search.count("}")
+        and last_nonempty.endswith("}")
+    ):
+        head_prefix = first_nonempty.split("{", 1)[0].strip()
+        if len(head_prefix) >= 4:
+            brace_matches = [
+                idx
+                for idx, raw_ln in enumerate(src_lines)
+                if raw_ln.strip() == first_nonempty
+                or (
+                    raw_ln.strip().startswith(head_prefix)
+                    and raw_ln.strip()[len(head_prefix) :].lstrip().startswith("{")
+                )
+            ]
+            if len(brace_matches) == 1:
+                idx0 = brace_matches[0]
+                start_char = sum(len(x) for x in src_lines[:idx0])
+                if action == "insert_before":
+                    end_char = sum(len(x) for x in src_lines[: idx0 + 1])
+                    return start_char, end_char
+                depth = 0
+                saw_open = False
+                end_idx = idx0
+                while end_idx < min(len(src_lines), idx0 + 180):
+                    ln_txt = src_lines[end_idx]
+                    for ch in ln_txt:
+                        if ch == "{":
+                            depth += 1
+                            saw_open = True
+                        elif ch == "}":
+                            depth -= 1
+                    end_idx += 1
+                    if saw_open and depth <= 0:
+                        end_char = sum(len(x) for x in src_lines[:end_idx])
+                        return start_char, end_char
+
+    # Safe bounded unique `(first_line, last_line)` window fallback (within 45 lines)
+    if action in ("replace", "insert_before", "insert_after") and len(non_empty_needle) >= 3:
+        if len(first_nonempty) >= 12 and len(last_nonempty) >= 10 and first_nonempty != last_nonempty:
+            f_hits = [idx for idx, raw_ln in enumerate(src_lines) if raw_ln.strip() == first_nonempty]
+            l_hits = [idx for idx, raw_ln in enumerate(src_lines) if raw_ln.strip() == last_nonempty]
+            if len(f_hits) == 1 and len(l_hits) == 1 and 0 < (l_hits[0] - f_hits[0]) <= 45:
+                s_i, e_i = f_hits[0], l_hits[0] + 1
+                return sum(len(x) for x in src_lines[:s_i]), sum(len(x) for x in src_lines[:e_i])
+
     # Safe unique top-level anchor fallback for replace / insert_before / insert_after on Python routes/functions
-    first_nonempty = next((ln.strip() for ln in needle_lines if ln.strip()), "")
     if action in ("replace", "insert_before", "insert_after") and len(first_nonempty) >= 12 and (
         first_nonempty.startswith("@app.") or first_nonempty.startswith("def ") or first_nonempty.startswith("# ──")
     ):

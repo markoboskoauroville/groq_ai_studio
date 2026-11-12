@@ -408,6 +408,16 @@ def record_spend(model, prompt_tokens, completion_tokens, req_id=""):
 
 app = Flask(__name__)
 
+# The brain of Macro Recorder (12.11.2026): a goal plus the block catalogue in, a chain of steps out.
+# Marko: "The last step of doing anything on this computer is using Groq AI Studio and Macro Recorder in tandem."
+try:
+    from brain import brain_bp
+    app.register_blueprint(brain_bp)
+    BRAIN_READY = True
+except Exception as _brain_exc:  # the studio must still run if the brain fails to load
+    BRAIN_READY = False
+    print(f"[brain] not loaded: {_brain_exc}")
+
 
 def _is_trusted_local_origin(hdr_url: str) -> bool:
     """Return True if Origin/Referer points to 127.0.0.1 or localhost."""
