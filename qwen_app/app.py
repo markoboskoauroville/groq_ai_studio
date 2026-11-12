@@ -286,6 +286,13 @@ def build_queen_system_prompt(user_persona: str = "") -> str:
         f"6. Computer Control & Production Integrations built into Queen:\n"
         f"   - Star Menu & Startup (`⭐` button / `/api/star/startup`, `/api/star/action` for open/quit/read/press/fn on all 55 Mantra apps via STAR_API :8863).\n"
         f"   - Voice Engine & Subtitles (`🔊` button / `/api/voice/speak`, `/api/voice/speaking`, `/api/voice/pause`, `/api/voice/stop`, `/api/voice/hear` via MANTRA_VOICE :8837).\n"
+        f"   - Affinity, the Canva photo/vector/layout app (`/api/affinity/status`, `/actions`, `/api`, "
+        f"`/do`, `/js`, `/render`). It has its OWN MCP server and a complete JavaScript SDK: never click in it. "
+        f"`GET /api/affinity/actions?q=...` is the database of proven actions with their arguments; "
+        f"`POST /api/affinity/do {{action, args}}` fires one; anything not in the database, look the call up with "
+        f"`GET /api/affinity/api?q=...` (492 classes, 5601 members of Affinity's own SDK) and run it with "
+        f"`POST /api/affinity/js {{script}}`; `POST /api/affinity/render` gives a JPEG back to check the result. "
+        f"Export and file opening return NOT_ALLOWED until Marko switches Desktop access on in Affinity's MCP settings.\n"
         f"   - Elevate Media Production (`🎬` button / `/api/elevate/board`, `/api/elevate/whatsapp`, `/api/elevate/whatsapp/draft`, `/api/elevate/drive-comments`, `/api/elevate/fetch-image`, `/api/elevate/gemini-chrome`, `/api/elevate/gemini-status`, `/api/elevate/resolve`).\n"
         f"7. Live Visible Self-Test Backdoor: `POST http://127.0.0.1:8765/api/test/live` (or `'t'` in terminal).\n"
     )
@@ -478,6 +485,17 @@ try:
 except Exception as _brain_exc:  # the studio must still run if the brain fails to load
     BRAIN_READY = False
     print(f"[brain] not loaded: {_brain_exc}")
+
+# Affinity (12.11.2026): the Canva app carries its own MCP server and a whole JavaScript SDK, so
+# Queen drives it by API, never by clicking. The action database lives in MACRO_SKILLS so the
+# Macro Recorder and Queen fire the same rows.
+try:
+    from affinity_bridge import register as _register_affinity
+    _register_affinity(app)
+    AFFINITY_READY = True
+except Exception as _aff_exc:
+    AFFINITY_READY = False
+    print(f"[affinity] not loaded: {_aff_exc}")
 
 
 def _is_trusted_local_origin(hdr_url: str) -> bool:

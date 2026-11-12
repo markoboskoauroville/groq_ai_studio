@@ -102,3 +102,13 @@ Marko's Groq model research (Groq has no image model, models researched for TTT)
 Groq keys (numbered keys in ~/Downloads/API/groq-api.txt). KeyringTester checks that these keys work and has read the image with
 `qwen/qwen3.8-27b` (14.10.2026). Work on this app: edit here in ~/Developer/groq_ai_studio, run `./install.sh`, restart `qwen`.
 Skills (registered in `.agents/skills.json`): `skills/groq-ai-studio/SKILL.md`, `skills/groq-ai-studio-testing/SKILL.md` (visible macOS Terminal runner: `skills/groq-ai-studio-testing/scripts/run_visible_tests.sh`), `skills/queen-auto-update-pipeline/SKILL.md` (Dual-Kind API Loader + Surgical Auto-Update Pipeline + Split-Screen UI blueprint), `skills/star-menu-computer-control/SKILL.md`, and `skills/elevate-media-production/SKILL.md`.
+
+## Affinity (12.11.2026)
+
+`qwen_app/affinity_bridge.py` gives Queen the Canva app: `/api/affinity/status`, `/actions?q=`, `/api?q=`,
+`POST /do {action,args}`, `POST /js {script}`, `POST /render {path|selection|spread}`. It owns no logic of
+its own - the client and the action database live in `~/Developer/MACRO_SKILLS` (`tools/affinity.py`,
+`affinity/actions.json`, `affinity/api_index.json`) so Queen and the Macro Recorder fire the same rows.
+The client is loaded **by path**: the bridge was first called `affinity.py` and `import affinity` found
+itself (AttributeError: no attribute affinity_pid). Affinity's own MCP server must be switched on in its
+Settings and the app restarted; the port is read from the process, never hard-coded. Skill: `affinity`.
