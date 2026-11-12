@@ -47,3 +47,20 @@
   now sends that work to gpt-oss-20b at $0.0108.
 - **12.11.2026, `bool({})` is False.** My own grader marked `"action": {}` - which is correct and complete - as a
   missing key, and blamed Queen for it. Test for the KEY, not its truthiness.
+- **12.11.2026, the server that looked alive.** `create_server()` binds the socket before `run()`, and `run()` was
+  wrapped in `except Exception: pass`. Queen printed "LIVE", held port 8765, and answered nothing. The real cause was
+  thread starvation: `threads=8` with one long-lived `/api/events` stream per open page, and a NEW browser tab opened
+  on every restart. Never swallow a server exception; never let unbounded long-lived streams share a small pool.
+- **12.11.2026, the benchmark that measured itself.** `/api/remote/send` appended every turn to `active_messages`, so
+  each task carried all the earlier ones: costs grew down the list and a model benchmarked later paid for the one
+  before it. Worse, a model could read its own earlier correct answers as worked examples - which is why the
+  "cure" first looked like 7/7 and was 3/7 on clean turns. Independent work needs `fresh: true`.
+- **12.11.2026, no token cap.** With none sent, Groq's default cut the hardest answer off mid-thinking: 8 KB of
+  reasoning, no closing tag, no code. `MAX_OUTPUT_TOKENS` now gives room to think AND answer.
+- **12.11.2026, do not read the model's thinking as its output.** qwen emits `<think>...</think>` and quotes the
+  requested output format inside it. The harness saved that prose as `content.js` and reported a broken file when the
+  model had correctly reasoned "only manifest.json is needed". Strip the thinking first; when a filename repeats,
+  keep the last block.
+- **12.11.2026, rules are weaker than an example.** Naming the three Chrome mistakes in the system prompt fixed them
+  only while the channel was feeding the model its own earlier answers. A short worked example of a complete correct
+  extension did the real work.

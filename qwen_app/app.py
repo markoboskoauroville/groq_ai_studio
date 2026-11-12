@@ -306,6 +306,38 @@ def build_queen_system_prompt(user_persona: str = "") -> str:
         "injected with `chrome.scripting.executeScript({files:[...]})` and not loaded by an HTML page is dead "
         "code: the feature silently does nothing. Either declare it or do not write it.\n"
         "Before you finish, re-read your own manifest against your own file list and check all three.\n"
+        "\nHere is a correct, complete, minimal MV3 extension. Copy its SHAPE - a manifest that declares exactly "
+        "the files written and exactly the permissions used, and nothing dangling:\n"
+        "=== FILE: manifest.json ===\n"
+        "{\n"
+        '  "manifest_version": 3,\n'
+        '  "name": "Example",\n'
+        '  "version": "1.0.0",\n'
+        '  "description": "What it does.",\n'
+        '  "permissions": ["storage", "scripting", "activeTab"],\n'
+        '  "host_permissions": ["http://127.0.0.1:8765/*"],\n'
+        '  "action": {"default_popup": "popup.html"},\n'
+        '  "background": {"service_worker": "background.js"},\n'
+        '  "content_scripts": [{"matches": ["<all_urls>"], "js": ["content.js"]}]\n'
+        "}\n"
+        "=== FILE: background.js ===\n"
+        'chrome.runtime.onMessage.addListener((msg) => { chrome.storage.local.set({ n: msg.n }); '
+        'chrome.action.setBadgeText({ text: String(msg.n) }); });\n'
+        "=== FILE: content.js ===\n"
+        'chrome.runtime.sendMessage({ n: document.querySelectorAll("a").length });\n'
+        "=== FILE: popup.html ===\n"
+        '<!DOCTYPE html><html><head><meta charset="utf-8"><title>Example</title></head>'
+        '<body><button id="go">Go</button><div id="out"></div><script src="popup.js"></script></body></html>\n'
+        "=== FILE: popup.js ===\n"
+        'document.getElementById("go").addEventListener("click", async () => {\n'
+        '  const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });\n'
+        '  if (!tab?.id) return;\n'
+        '  const [r] = await chrome.scripting.executeScript({ target: { tabId: tab.id }, '
+        'func: () => document.title });\n'
+        '  document.getElementById("out").textContent = r.result;\n'
+        "});\n"
+        "Every file named above is written; every API used is declared; nothing is written that nothing loads. "
+        "Write only the files YOUR task needs, in that same shape, and make sure your JavaScript parses.\n"
     )
 
     if user_persona:
@@ -337,6 +369,11 @@ def detect_code_intent(text: str) -> bool:
 pool = DynamicKeyPool(quiet=True, include_env=True)
 
 active_messages = []
+# the most pages that may hold a live event stream at once; the oldest is dropped beyond this (12.11.2026)
+MAX_SSE = 12
+# 12.11.2026: no cap was sent, so Groq's own default cut the hardest answers off MID-THINKING - the qwen models
+# reason out loud and spent the whole budget on it, returning no code at all. Give them room to think AND answer.
+MAX_OUTPUT_TOKENS = int(os.environ.get("QWEN_MAX_OUTPUT", "16000"))
 event_subscribers = []
 subscribers_lock = threading.Lock()
 
@@ -497,12 +534,23 @@ def sse_events():
     def stream():
         q = queue.Queue(maxsize=100)
         with subscribers_lock:
+            # A forgotten tab holds its thread until it is closed. Keep the newest MAX_SSE and let the oldest go,
+            # so a day of restarts cannot lock the server (12.11.2026).
+            while len(event_subscribers) >= MAX_SSE:
+                old = event_subscribers.pop(0)
+                try:
+                    old.put_nowait({"type": "closed", "why": "a newer page took this slot"})
+                except Exception:
+                    pass
             event_subscribers.append(q)
         try:
             yield f"data: {json.dumps({'type': 'init', 'messages': active_messages, 'count': len(active_messages)})}\n\n"
             while True:
                 try:
                     event = q.get(timeout=20.0)
+                    if isinstance(event, dict) and event.get("type") == "closed":
+                        yield f"data: {json.dumps(event)}\n\n"
+                        return                      # this page lost its slot: free the thread
                     yield f"data: {json.dumps(event)}\n\n"
                 except queue.Empty:
                     yield ": ping\n\n"
@@ -575,8 +623,13 @@ def remote_send():
         "timestamp": time.time()
     })
 
+    # 12.11.2026: a caller doing INDEPENDENT turns (a benchmark, a one-shot job, anything scripted) must be able to
+    # ask for a clean turn. Without this every call carried the whole prior conversation: the cost grew with each
+    # task and one model's benchmark paid for the one before it, which silently corrupted the model comparison.
+    fresh = bool(data.get("fresh"))
     user_msg = {"role": "user", "content": prompt, "mode": mode, "timestamp": time.time()}
-    active_messages.append(user_msg)
+    if not fresh:
+        active_messages.append(user_msg)
 
     groq_msgs = [{"role": "system", "content": build_queen_system_prompt(system_prompt)}]
     if mode == "code":
@@ -584,7 +637,8 @@ def remote_send():
             "role": "system",
             "content": "You are in CODE BOX mode. Provide ONLY the code solution. Format the code inside a single clean markdown code block with appropriate language tag. No pleasantries, no conversational preamble, no closing text."
         })
-    for m in active_messages[-MAX_MESSAGES:]:
+    history = [user_msg] if fresh else active_messages[-MAX_MESSAGES:]
+    for m in history:
         groq_msgs.append({"role": m["role"], "content": m["content"]})
 
     candidates = pool.candidates(model)
@@ -613,7 +667,8 @@ def remote_send():
                     "from_key": pool._mask(candidates[attempt - 2]),
                     "to_key": pool._mask(key)
                 })
-            resp = client.chat.completions.create(model=model, messages=groq_msgs, stream=True)
+            resp = client.chat.completions.create(model=model, messages=groq_msgs, stream=True,
+                                                  max_tokens=MAX_OUTPUT_TOKENS)
             for chunk in resp:
                 if chunk.choices:
                     d = chunk.choices[0].delta
@@ -691,7 +746,8 @@ def remote_send():
         "mode": mode,
         "timestamp": time.time()
     }
-    active_messages.append(asst_msg)
+    if not fresh:
+        active_messages.append(asst_msg)
 
     broadcast_event({
         "type": "turn_complete",
@@ -707,7 +763,8 @@ def remote_send():
         reasoning=full_reason,
         telemetry=telemetry,
         total_spent=ledger["total_spent"],
-        messages_count=len(active_messages)
+        messages_count=len(active_messages),
+        fresh=fresh
     )
 
 # --- Standard Chatbot Streaming Route with Failover ---
@@ -773,7 +830,8 @@ def chat():
                         "from_key": pool._mask(candidates[attempt - 2]),
                         "to_key": pool._mask(key)
                     })
-                resp = client.chat.completions.create(model=model, messages=groq_msgs, stream=True)
+                resp = client.chat.completions.create(model=model, messages=groq_msgs, stream=True,
+                                                  max_tokens=MAX_OUTPUT_TOKENS)
                 for chunk in resp:
                     if chunk.choices:
                         d = chunk.choices[0].delta
@@ -3195,16 +3253,24 @@ def main():
         app,
         host="127.0.0.1",
         port=port,
-        threads=8,
+        # 12.11.2026: was 8. Each open Studio page holds ONE thread for its whole life on /api/events, so eight
+        # open tabs starved the pool: the port stayed LISTENING and every request hung for ever. See MAX_SSE below.
+        threads=48,
         channel_timeout=600,
         ident=f"groq-modern-chat-v{VERSION}",
     )
 
     def run_safe():
+        # 12.11.2026: this used to be `except Exception: pass`. create_server() binds the socket before run(),
+        # so a failure in run() left the port LISTENING with nothing answering - Queen looked alive and hung
+        # every request. A server that dies must say so.
         try:
             server.run()
-        except Exception:
-            pass
+        except Exception as exc:
+            import traceback
+            print(f"\n[FATAL] the web server stopped: {exc}", flush=True)
+            traceback.print_exc()
+            os._exit(1)
 
     server_thread = threading.Thread(target=run_safe, daemon=True)
     server_thread.start()
@@ -3216,7 +3282,10 @@ def main():
         except Exception:
             pass
 
-    threading.Thread(target=kick_in_browser, daemon=True).start()
+    # QWEN_NO_BROWSER=1 for a restart from a script: every restart used to open ANOTHER tab, and each tab holds a
+    # thread on /api/events, which is how the server came to be starved (12.11.2026).
+    if os.environ.get("QWEN_NO_BROWSER") not in ("1", "true", "yes"):
+        threading.Thread(target=kick_in_browser, daemon=True).start()
 
     print("\033[1;36m" + "=" * 74 + "\033[0m")
     print(f"\033[1;32m  Groq Modern AI Studio & Chatbot — Version {VERSION} is LIVE\033[0m")

@@ -70,6 +70,42 @@ troy - and the API rejects every reference-audio field (`reference_audio`, `voic
 on `127.0.0.1:8837`, which holds eleven cloned voices. One real bug: the WAV that Orpheus returns has a wrong frame
 count in its header, so players report an absurd duration; compute the length from the byte count instead.
 
+## Second stress pass, 12.11.2026: five bugs in the SYSTEM, not in the model
+
+Marko: "do one more time the stress test of all the features of the queen and kill the bugs and find ways how to
+improve the whole system." Her own suite passed 16/16. Everything below was found by pushing harder, and **not one of
+it was the model being stupid**.
+
+| # | Bug | What it did | Fixed by |
+|---|---|---|---|
+| 1 | `threads=8` and one thread per open page | Each Studio tab holds `/api/events` for life, and Queen opened a NEW tab on every restart. Twelve tabs later the pool was starved: the port stayed LISTENING and **every request hung for ever**. | `threads=48`, `MAX_SSE=12` (oldest page dropped), `QWEN_NO_BROWSER=1` |
+| 2 | `except Exception: pass` around `server.run()` | `create_server()` binds before `run()`, so a dead server still held the port. Queen looked alive and answered nothing, silently. | it now prints the traceback and exits |
+| 3 | `/api/remote/send` kept every turn | Each call carried all the earlier ones, so cost grew down a benchmark and **a model measured later paid for the one before it** | `fresh: true` for independent turns |
+| 4 | no `max_tokens` on the completion | On the hardest task the model spent its whole budget thinking out loud and was **cut off mid-sentence with no code at all** | `MAX_OUTPUT_TOKENS` (16,000, env-tunable) |
+| 5 | the bench read `<think>` blocks as files | qwen reasons out loud and QUOTES the output format while doing it. The harness saved that prose as `content.js` and blamed Queen for a file she had correctly decided not to write. | the thinking is stripped before splitting |
+
+### A correction to what this profile said earlier
+The line above - "the blind spot is cured, 7/7" - was measured on a **contaminated channel**. Each level could see the
+previous levels' correct answers, so part of that score was the model copying its own earlier work. On clean,
+independent turns the same ladder scored **3/7**. Rules in the prompt were not enough; what helped was adding a short
+**worked example** of a complete, correct MV3 extension to the system prompt. With the example, clean turns, and the
+token cap, qwen3.6-27b now scores **7/7 on extensions and 10/10 on the stress battery**, honestly.
+
+### What the clean numbers say about the two qwen models
+| Model | Stress (10) | Extensions (7) | Note |
+|---|---|---|---|
+| `qwen/qwen3.6-27b` | **10/10** $0.0343 | **7/7** $0.0526 | Marko's default - and it earns it on clean turns |
+| `qwen/qwen3.8-27b` | 9/10 $0.0162 | not re-run | cheaper, but made a real Swift syntax error |
+
+This **reverses** what this file said before. On contaminated data 3.8 looked better and cheaper; measured properly,
+3.6 scores higher. Marko chose 3.6 before the clean numbers existed, and the clean numbers agree with him.
+
+### The lesson for the whole system
+Every one of the five bugs was invisible from the outside: a hung server that looked alive, costs that drifted
+upward, answers cut off, and a harness that blamed the model for its own parsing. **A measurement you have not tried
+to break is not a measurement.** Before trusting any number here again: run the same task twice on a fresh channel
+and check the cost does not move.
+
 ## So where is the line for leaving him alone?
 
 **The honest answer is that the line is not a difficulty level — it is whether a machine checks his work.**
