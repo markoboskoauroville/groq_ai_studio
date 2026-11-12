@@ -59,6 +59,11 @@ def ask(data, pool, record_spend):
     if len(raw) > MAX_BYTES:
         raise VisionError(f"image is {len(raw)//1000} KB; the limit is {MAX_BYTES//1000} KB")
     url = f"data:{mime};base64," + base64.b64encode(raw).decode()
+    extra = []                                   # more pictures in the same question (e.g. "is this the same photo?")
+    for p in data.get("also") or []:
+        pb = Path(p).expanduser().read_bytes()
+        extra.append({"type": "image_url", "image_url": {"url": f"data:{mimetypes.guess_type(str(p))[0] or 'image/jpeg'};base64,"
+                                                          + base64.b64encode(pb).decode()}})
     model = data.get("model") or VISION_MODEL
     want_json = bool(data.get("json"))
     if want_json:
@@ -70,7 +75,7 @@ def ask(data, pool, record_spend):
             r = Groq(api_key=key, max_retries=0).chat.completions.create(
                 model=model, max_tokens=int(data.get("max_tokens") or 1500),
                 messages=[{"role": "user", "content": [{"type": "text", "text": question},
-                                                       {"type": "image_url", "image_url": {"url": url}}]}])
+                                                       {"type": "image_url", "image_url": {"url": url}}] + extra}])
             pool.good(key, model)
             text = (r.choices[0].message.content or "").split("</think>")[-1].strip()
             u = r.usage

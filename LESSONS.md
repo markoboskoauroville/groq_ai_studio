@@ -115,3 +115,9 @@
   forbids unverifiable place names; the supervisor's approval note can correct the words without restarting the task.
 - The site repo had moved on (v4, another session's work) and my local copy was behind: the skill pulls first and refuses to
   work on top of uncommitted changes.
+- 12.11.2026, self-check on the live page: the first screenshot was blank (viewport coordinates given to a page-coordinate
+  clip) and her eyes still answered "different framing". A blank capture is now caught by size before she judges; the second
+  capture showed the panorama and she said "identical scene and framing" (true).
+- 12.11.2026, the tabbed interface: the pop-ups (Star, Voice, Elevate, GitHub, Billing, Settings, Keys, Persona, Self-update)
+  were MOVED into tabs with their ids, and openModal()/closeModal() switch tabs; each tab runs the old buttons' load code on
+  arrival (the Star card said "Loading..." until it did). The auto-update split opens the Auto-update tab instead.

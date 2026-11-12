@@ -3321,5 +3321,230 @@ async function refreshVersionBadge(){
   } catch(e){}
 }
 </script>
+
+<!-- ══ QUEEN TABS (12.11.2026) ══
+     Marko: "Make a new interface for her, for Queen, in tabs, so each task is in a different tab. We have: Settings,
+     Auto-update, Chat ... If you can find any more groupings, make it like this ... The real estate of the application
+     is used. Also, make an Easter egg ... an icon which is lightning. When I click on it, I go to full screen, and when
+     I click again, I come back."
+     Nothing of the old code is rewritten: every pop-up's content is MOVED into its tab (ids stay the same, so all the
+     existing handlers keep working), and openModal()/closeModal() now switch tabs instead of opening windows. -->
+<style>
+#qtabs{display:flex;align-items:stretch;gap:2px;padding:0 10px;background:var(--bg-panel);border-bottom:1px solid var(--border);flex-shrink:0;overflow-x:auto}
+#qtabs button{background:none;border:0;border-bottom:2px solid transparent;color:var(--text-sub);font:600 13px var(--font);padding:10px 14px 9px;cursor:pointer;white-space:nowrap;display:flex;align-items:center;gap:6px}
+#qtabs button:hover{color:var(--text);background:var(--bg-hover)}
+#qtabs button.on{color:var(--text);border-bottom-color:var(--accent)}
+#qtabs .qbadge{background:var(--accent);color:#fff;border-radius:9px;font-size:10.5px;padding:0 6px;line-height:17px;display:none}
+#qtabs .qbadge.show{display:inline-block}
+.qpane{display:none;flex:1;min-height:0;overflow:auto;padding:18px 20px 26px}
+.qpane.on{display:block}
+.qgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(440px,1fr));gap:18px;align-items:start}
+.qcard{background:var(--bg-panel);border:1px solid var(--border);border-radius:var(--radius);padding:16px 18px;min-width:0}
+.qcard .modal{position:static!important;max-width:none!important;width:auto!important;max-height:none!important;box-shadow:none!important;border:0!important;background:none!important;padding:0!important;transform:none!important;opacity:1!important;margin:0!important}
+.qcard .modal-close{display:none!important}
+.qcard.flash{box-shadow:0 0 0 2px var(--accent)}
+.qhead{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:12px}
+.qhead h2{font-size:16px;font-weight:700}
+.qsub{color:var(--text-sub);font-size:12.5px}
+.qtask{border:1px solid var(--border);border-radius:10px;padding:12px 14px;margin-bottom:10px;background:var(--bg-surface)}
+.qtask .qt{display:flex;justify-content:space-between;gap:10px;align-items:baseline}
+.qtask b{font-size:13.5px}
+.qst{font:600 11px var(--mono);padding:1px 8px;border-radius:8px;white-space:nowrap}
+.qst.pending{background:rgba(212,162,89,.15);color:var(--amber)}.qst.approved{background:rgba(111,186,138,.14);color:var(--green)}.qst.rejected{background:rgba(224,108,108,.14);color:var(--red)}
+.qtask pre{white-space:pre-wrap;font:12px/1.5 var(--mono);color:var(--text-sub);max-height:260px;overflow:auto;margin-top:8px;background:var(--bg);padding:8px 10px;border-radius:8px}
+.qtask .qbtns{display:flex;gap:8px;margin-top:10px}
+.qbtn{border:1px solid var(--border-mid);background:var(--bg-hover);color:var(--text);border-radius:8px;padding:5px 12px;font:600 12px var(--font);cursor:pointer}
+.qbtn.ok{border-color:var(--green);color:var(--green)}.qbtn.no{border-color:var(--red);color:var(--red)}
+.qlink{color:var(--accent);cursor:pointer;text-decoration:underline;font-size:12.5px}
+#qpane-update{padding:0;display:none;flex-direction:column}
+#qpane-update.on{display:flex}
+#qpane-update #engineer-pane{display:flex!important;flex:1;width:auto!important;max-width:none!important;min-width:0;border-left:0!important;transform:none!important;opacity:1!important;position:static!important}
+#qpane-update .q-au-bar{display:flex;align-items:center;gap:10px;padding:10px 16px;border-bottom:1px solid var(--border);background:var(--bg-panel)}
+#qpane-update .q-au-bar #au-topbar-cluster{display:flex!important}
+#qpane-update #btn-close-split{display:none!important}
+body.q-tabs #btn-star,body.q-tabs #btn-voice,body.q-tabs #btn-elevate,body.q-tabs #btn-github,body.q-tabs #btn-self-update,body.q-tabs #btn-persona,body.q-tabs #btn-billing,body.q-tabs #btn-settings,body.q-tabs #btn-toggle-split{display:none!important}
+.brand-icon{cursor:pointer;user-select:none}
+.brand-icon:hover{filter:drop-shadow(0 0 6px var(--accent))}
+@media(max-width:900px){.qgrid{grid-template-columns:1fr}}
+</style>
+<script>
+(function(){
+  var TABS = [
+    {id:"chat",     label:"💬 Chat"},
+    {id:"tasks",    label:"🗂 Tasks", badge:true},
+    {id:"update",   label:"⚡ Auto-update"},
+    {id:"tools",    label:"🧰 Tools"},
+    {id:"skills",   label:"🧠 Skills"},
+    {id:"spend",    label:"💰 Spend"},
+    {id:"settings", label:"⚙️ Settings"}
+  ];
+  // where each old pop-up lives now
+  var HOME = {"modal-star":"tools","modal-voice":"tools","modal-elevate":"tools","modal-github":"tools",
+              "modal-billing":"spend","modal-settings":"settings","modal-keys":"settings","modal-persona":"settings",
+              "modal-self-update":"settings"};
+  var main = document.getElementById("main"), topbar = document.getElementById("topbar");
+  var ws = document.getElementById("workspace-split");
+  document.body.classList.add("q-tabs");
+
+  // 1. the tab bar
+  var bar = document.createElement("nav"); bar.id = "qtabs";
+  TABS.forEach(function(t){
+    var b = document.createElement("button"); b.dataset.tab = t.id;
+    b.innerHTML = t.label + (t.badge ? ' <span class="qbadge" id="qbadge-'+t.id+'">0</span>' : "");
+    b.onclick = function(){ show(t.id); };
+    bar.appendChild(b);
+  });
+  main.insertBefore(bar, topbar);
+
+  // 2. the panes (chat = the existing workspace)
+  var panes = {chat: ws};
+  TABS.forEach(function(t){
+    if (t.id === "chat") return;
+    var p = document.createElement("div"); p.className = "qpane"; p.id = "qpane-"+t.id;
+    main.appendChild(p); panes[t.id] = p;
+  });
+  function grid(pane, title, sub){
+    var h = document.createElement("div"); h.className = "qhead";
+    h.innerHTML = '<div><h2>'+title+'</h2><div class="qsub">'+(sub||"")+'</div></div>';
+    pane.appendChild(h);
+    var g = document.createElement("div"); g.className = "qgrid"; pane.appendChild(g); return g;
+  }
+  var gTools = grid(panes.tools, "Tools", "Star Menu · Voice · Elevate Media · GitHub reader");
+  var gSpend = grid(panes.spend, "Spend", "Groq chat, vision and auto-update costs");
+  var gSet   = grid(panes.settings, "Settings", "Settings · API keys · persona · chunk self-update");
+  var target = {tools:gTools, spend:gSpend, settings:gSet};
+
+  // 3. every pop-up's content moved into its tab, as a card (same ids, so the old code still finds everything)
+  Object.keys(HOME).forEach(function(mid){
+    var bg = document.getElementById(mid); if (!bg) return;
+    var m = bg.querySelector(".modal"); if (!m) return;
+    var card = document.createElement("div"); card.className = "qcard"; card.id = "qcard-"+mid;
+    card.appendChild(m); target[HOME[mid]].appendChild(card);
+    bg.style.display = "none";
+  });
+
+  // 4. auto-update: the engineer studio gets the whole tab, its switch on top
+  var eng = document.getElementById("engineer-pane"), au = document.getElementById("au-topbar-cluster");
+  var aubar = document.createElement("div"); aubar.className = "q-au-bar";
+  if (au) aubar.appendChild(au);
+  panes.update.appendChild(aubar);
+  if (eng) panes.update.appendChild(eng);
+  // the old code opens a 50/50 split when an update runs: now it opens this tab instead
+  new MutationObserver(function(){
+    if (ws.classList.contains("split-open")){ ws.classList.remove("split-open"); show("update"); }
+  }).observe(ws, {attributes:true, attributeFilter:["class"]});
+
+  // 5. pop-ups become tabs
+  var current = null;
+  // the old pop-up buttons also LOADED their data (Star apps, voice status, billing ...): a tab runs them on arrival
+  var LOADERS = {tools:["btn-star","btn-voice","btn-elevate","btn-github"], spend:["btn-billing"],
+                 settings:["btn-settings","btn-persona","btn-self-update"]};
+  window.openModal = function(id){
+    var t = HOME[id]; if (!t) return;
+    if (t !== current) show(t);
+    var c = document.getElementById("qcard-"+id);
+    if (c){ c.scrollIntoView({behavior:"smooth", block:"start"}); c.classList.add("flash"); setTimeout(function(){ c.classList.remove("flash"); }, 1400); }
+  };
+  window.closeModal = function(){};
+
+  function show(id){
+    var arriving = (id !== current); current = id;
+    Object.keys(panes).forEach(function(k){
+      if (k === "chat") ws.style.display = (id === "chat") ? "" : "none";
+      else panes[k].classList.toggle("on", k === id);
+    });
+    bar.querySelectorAll("button").forEach(function(b){ b.classList.toggle("on", b.dataset.tab === id); });
+    try { localStorage.setItem("queen_tab", id); } catch(e){}
+    if (arriving && LOADERS[id]) LOADERS[id].forEach(function(b){
+      var el = document.getElementById(b);
+      try { if (el && el.onclick) el.onclick(); } catch(e){}
+    });
+    if (id === "tasks") loadTasks();
+    if (id === "skills") loadSkills();
+    if (id === "settings" && typeof refreshKeysList === "function") { try { refreshKeysList(); } catch(e){} }
+  }
+  window.queenShowTab = show;
+
+  // 6. Tasks: Queen's task chats and her proposals to the supervisor (Marko may decide too)
+  var gTasks = grid(panes.tasks, "Tasks", "Each task Queen runs has its own chat; every step that changes something waits for approval");
+  var colQ = document.createElement("div"), colC = document.createElement("div");
+  colQ.className = "qcard"; colC.className = "qcard";
+  colQ.innerHTML = '<div class="qhead"><h2>Approvals</h2><span class="qsub" id="q-pending-n"></span></div><div id="q-approvals"></div>';
+  colC.innerHTML = '<div class="qhead"><h2>Task chats</h2></div><div id="q-taskchats"></div>';
+  gTasks.appendChild(colQ); gTasks.appendChild(colC);
+  function esc(t){ return String(t==null?"":t).replace(/[&<>]/g, function(c){ return {"&":"&amp;","<":"&lt;",">":"&gt;"}[c]; }); }
+  async function loadTasks(){
+    try {
+      var r = await (await fetch("/api/supervisor/recent?n=40")).json();
+      var box = document.getElementById("q-approvals"); box.innerHTML = "";
+      (r.recent||[]).forEach(function(p){
+        var d = document.createElement("div"); d.className = "qtask";
+        d.innerHTML = '<div class="qt"><b>'+esc(p.task)+'</b><span class="qst '+p.status+'">'+esc(p.step)+' · '+esc(p.status)+'</span></div>'+
+          '<div class="qsub">'+esc(p.summary)+'</div>'+(p.note?'<div class="qsub">note: '+esc(p.note)+'</div>':'')+
+          '<pre>'+esc(p.detail)+'</pre>'+
+          (p.status==="pending" ? '<div class="qbtns"><button class="qbtn ok">Approve</button><button class="qbtn no">Reject</button></div>' : '');
+        if (p.status === "pending"){
+          d.querySelector(".ok").onclick = function(){ decide(p.id, "approve", ""); };
+          d.querySelector(".no").onclick = function(){ var why = prompt("Why reject?") || "rejected by Marko"; decide(p.id, "reject", why); };
+        }
+        box.appendChild(d);
+      });
+      if (!(r.recent||[]).length) box.innerHTML = '<div class="qsub">Nothing asked yet.</div>';
+      var tc = document.getElementById("q-taskchats"); tc.innerHTML = "";
+      Object.keys(window.sessions||{}).filter(function(k){ return k.indexOf("task_")===0; })
+        .sort().reverse().forEach(function(k){
+          var s = sessions[k], last = (s.messages||[]).slice(-1)[0];
+          var d = document.createElement("div"); d.className = "qtask";
+          d.innerHTML = '<div class="qt"><b>'+esc(s.title)+'</b><span class="qlink">open chat</span></div>'+
+                        '<div class="qsub">'+esc(last ? last.content.slice(0,220) : "")+'</div>';
+          d.querySelector(".qlink").onclick = function(){ currentSessionId = k; saveSessions(); renderMessages(); renderSidebar(); show("chat"); };
+          tc.appendChild(d);
+        });
+      if (!tc.children.length) tc.innerHTML = '<div class="qsub">No task yet.</div>';
+    } catch(e){}
+  }
+  async function decide(id, decision, note){
+    await fetch("/api/supervisor/decide", {method:"POST", headers:{"Content-Type":"application/json"},
+      body: JSON.stringify({id:id, decision:decision, note:note, by:"Marko"})});
+    loadTasks(); pollBadge();
+  }
+  async function pollBadge(){
+    try {
+      var r = await (await fetch("/api/supervisor/pending")).json();
+      var n = (r.pending||[]).length, b = document.getElementById("qbadge-tasks");
+      if (b){ b.textContent = n; b.classList.toggle("show", n > 0); }
+      var pn = document.getElementById("q-pending-n"); if (pn) pn.textContent = n ? n+" waiting" : "";
+      if (panes.tasks.classList.contains("on")) loadTasks();
+    } catch(e){}
+  }
+  setInterval(pollBadge, 4000); pollBadge();
+
+  // 7. Skills
+  var gSk = grid(panes.skills, "Skills", "What Queen has been taught (queen_skills); she reads all of them on every turn");
+  async function loadSkills(){
+    try {
+      var r = await (await fetch("/api/skills/list")).json(); gSk.innerHTML = "";
+      (r.skills||[]).forEach(function(k){
+        var c = document.createElement("div"); c.className = "qcard";
+        c.innerHTML = '<div class="qhead"><h2>'+esc(k.name)+'</h2></div><pre style="white-space:pre-wrap;font:12.5px/1.55 var(--mono);color:var(--text-sub)">'+esc(k.text)+'</pre>';
+        gSk.appendChild(c);
+      });
+    } catch(e){}
+  }
+
+  // 8. Easter egg: the lightning goes full screen, and back
+  var bolt = document.querySelector(".brand-icon");
+  if (bolt){
+    bolt.title = "Full screen (click again to come back)";
+    bolt.addEventListener("click", function(){
+      if (document.fullscreenElement) document.exitFullscreen();
+      else document.documentElement.requestFullscreen().catch(function(){});
+    });
+  }
+
+  var last = "chat"; try { last = localStorage.getItem("queen_tab") || "chat"; } catch(e){}
+  show(panes[last] ? last : "chat");
+})();
+</script>
 </body>
 </html>

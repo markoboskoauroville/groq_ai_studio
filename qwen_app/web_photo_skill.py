@@ -29,7 +29,7 @@ from flask import jsonify, request
 
 WORK = Path.home() / ".groq" / "work"
 SITES = {"KUKLJICA_ECOOASIS": {"dir": Path.home() / "Developer" / "KUKLJICA_ECOOASIS",
-                               "live": "https://markoboskoauroville.github.io/KUKLJICA_ECOOASIS/",
+                               "live": "https://kukljica-ecooasis.pages.dev/",
                                "name": "Kukljica EcoOasis"}}
 MAX_KB = 450
 WIDTH = 2400
@@ -143,6 +143,15 @@ def plan_edit(html, file, alt, w, h, cap_en, cap_hr):
     return new, where, key
 
 
+def live_url(repo_dir):
+    """Where the site really is: a wrangler pages deploy -> https://<project>.pages.dev/; GitHub Pages otherwise."""
+    for wf in (Path(repo_dir) / ".github" / "workflows").glob("*.y*ml"):
+        m = re.search(r"pages deploy \S+ --project-name[ =]([a-z0-9-]+)", wf.read_text())
+        if m:
+            return f"https://{m.group(1)}.pages.dev/"
+    return None
+
+
 def run(source, repo="KUKLJICA_ECOOASIS", title=None, pool=None, record_spend=None):
     import supervisor  # noqa: PLC0415
     from task_chat import TaskChat  # noqa: PLC0415
@@ -228,9 +237,10 @@ def run(source, repo="KUKLJICA_ECOOASIS", title=None, pool=None, record_spend=No
         raise WebPhotoError(f"push failed: {out[-300:]}")
     chat.say("Pushed to main; GitHub Actions publishes the site now.")
 
-    # 6. verify
+    # 6. verify (self-check): the live address is read from the deploy workflow itself, not from a README
+    #    (12.11.2026: the README still named GitHub Pages, which answered 404; the site is on Cloudflare Pages)
     import urllib.request  # noqa: PLC0415
-    live, seen = site["live"], False
+    live, seen = live_url(d) or site["live"], False
     for _ in range(40):
         time.sleep(15)
         try:
@@ -240,10 +250,20 @@ def run(source, repo="KUKLJICA_ECOOASIS", title=None, pool=None, record_spend=No
                     break
         except Exception:
             pass
+    # the visual self-check (Marko: "screenshot and confirm that things are live ... compare the image of what she did")
+    vis = {}
+    if seen:
+        import live_check  # noqa: PLC0415
+        try:
+            vis = live_check.image_live(live, f"img/{name}", str(copy), pool, record_spend)
+        except Exception as exc:
+            vis = {"ok": False, "why": f"{type(exc).__name__}: {exc}"}
+        chat.say(f"Self-check on the live page: found {vis.get('found')}, loaded {vis.get('loaded')}, same photo "
+                 f"{vis.get('same_photo')} ({vis.get('why', '')}). Screenshot: {vis.get('screenshot', '-')}")
     chat.say((f"Live: {live}#gallery carries img/{name}." if seen else f"Not yet seen on {live} after 10 min; check the Actions run.")
-             + "\nTask finished.")
+             + ("" if not seen or vis.get("ok") else " The visual check did NOT pass: look at it.") + "\nTask finished.")
     return {"chat": chat.id, "title": title, "file": f"img/{name}", "kb": kb, "size": [w, h], "live": live + "#gallery",
-            "seen_live": seen, "captions": caps}
+            "seen_live": seen, "visual_check": vis, "captions": caps}
 
 
 def register(app, pool, record_spend):

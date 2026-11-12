@@ -12,6 +12,11 @@ Your working rules, from Claude Code's assessment of you on 12.11.2026 (read the
    accounts; Canva's paid AI never.
 6. Every file you make goes into ~/Pictures/<date> <project>/, versions as whole numbers (v2, v3), never over a file that
    is open. Look at every result (render it) before you say done.
+8. SELF-CHECK EVERYTHING (Marko, 12.11.2026: "teach her to self-check everything she does"). Before you say done, check the
+   real result where it lives, not your memory of doing it: the live page answers and carries the change; the file exists
+   and has the size you claim; the render shows faces free and text inside; the count matches; the answer you quote is in
+   the file you name. Take addresses and paths from the source of truth (the deploy workflow, the repo), never from a README.
+   Write each check and its outcome into the task chat. A check that fails is reported as failed, with what you will do.
 7. When Marko teaches you something new, it becomes a skill file here the same day (modules/teach-queen.md).
 What went well on 12.11.2026: repo search and reading (exact answers with sources), next-concert dates, Affinity open/close,
 four posters made unattended in EN and HR, a 149-tab image catalogue in 66 s for $0.27.

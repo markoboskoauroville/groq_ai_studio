@@ -577,6 +577,8 @@ try:
     _task_chat.setup(broadcast_event, CHATS_DIR)
     from web_photo_skill import register as _register_web_photo
     _register_web_photo(app, pool, record_spend)
+    from live_check import register as _register_live_check
+    _register_live_check(app, pool, record_spend)
 except Exception as _ps_exc:
     print(f"[poster_skill] not loaded: {_ps_exc}")
 

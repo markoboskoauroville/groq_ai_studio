@@ -44,3 +44,7 @@ Done: repo created from ~/.groq (qwen_app, groq_pool, groq_cli, launchers), TAKE
 > please teach Queen how to do this Now you need to supervise her before each move. She's going to ask approval from you, so she doesn't mess up my website.
 
 > in queue with new task. Open the new chat with the title of the task, please
+
+> yes, self-checking. You need to teach her to self-check everything she does. Make a new interface for her, for Queen, in tabs, so each task is in a different tab. We have: - Settings task - Auto-update task - Chat task If you can find any more groupings, make it like this, so it's organizing better. The real estate of the application is used. Also, make an Easter egg, Groq Studio. There is an icon which is lightning. When I click on it, I go to full screen, and when I click again, I come back
+
+> please teach her how to screenshot and confirm that things are live. She can recognize, she can compare the image of what she did and find it on the page, and confirm the image is there

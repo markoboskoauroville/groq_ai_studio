@@ -109,6 +109,25 @@ def register(app):
         except Exception as exc:
             return jsonify(ok=False, error=str(exc)), 404
 
+    @app.get("/api/supervisor/recent")
+    def sup_recent():
+        """The last proposals of every status, newest first: the Tasks tab shows what was asked and decided."""
+        DIR.mkdir(parents=True, exist_ok=True)
+        out = []
+        for p in sorted(DIR.glob("*.json"), key=lambda x: x.stat().st_mtime, reverse=True)[:int(request.args.get("n", 40))]:
+            try:
+                out.append(json.loads(p.read_text()))
+            except Exception:
+                pass
+        return jsonify(ok=True, recent=out)
+
+    @app.get("/api/skills/list")
+    def skills_list():
+        """Queen's skills (queen_skills/*.md), for the Skills tab."""
+        d = Path(__file__).resolve().parent.parent / "queen_skills"
+        out = [{"name": f.stem, "text": f.read_text(encoding="utf-8")} for f in sorted(d.glob("*.md"))]
+        return jsonify(ok=True, skills=out)
+
     @app.post("/api/supervisor/decide")
     def sup_decide():
         d = request.get_json(silent=True) or {}

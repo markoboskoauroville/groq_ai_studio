@@ -193,3 +193,13 @@ Queen must be started WITHOUT the CLAUDE* variables of a Claude session (env -u 
 - `qwen_app/web_photo_skill.py`, `POST /api/skills/web-photo {source, repo}`: web copy (2400 px JPEG <= 450 KB), captions EN/HR
   from her eyes with the real capture time, PLAN -> CHANGE (exact diff) -> build check (auto undo) -> DEPLOY, each approved;
   then the live page is checked. First run: the panorama of 17.12.2025 into a new Photo gallery section of KUKLJICA_ECOOASIS.
+
+## Tabs, live self-check (12.11.2026, night)
+
+- The page is in tabs (Marko: "each task in a different tab ... the real estate of the application is used"): Chat, Tasks
+  (approvals with Approve/Reject for Marko too, task chats), Auto-update (the engineer studio, full width), Tools (Star,
+  Voice, Elevate, GitHub), Skills (queen_skills), Spend, Settings (settings, keys, persona, chunk self-update). A badge on
+  Tasks counts the proposals waiting. The block "QUEEN TABS" at the end of index.html; the old code is unchanged.
+- Easter egg: the ⚡ next to "Groq Studio" toggles full screen.
+- `qwen_app/live_check.py`, `POST /api/selfcheck/image-live`: live page in a background tab, the image found, loaded,
+  screenshotted and compared by her eyes with what she made; used by the web-photo skill at the end.
