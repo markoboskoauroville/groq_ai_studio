@@ -114,3 +114,16 @@ All previously open items completed in v3:
 calls and also shows live in the open page. Send `system_prompt` each time. Each turn costs about $0.002 on qwen3.8-27b.
 
 The Qwen model can read the auto-update repo (`markoboskoauroville/groq-auto-update`) through the GitHub Reader (🐙) in the UI. It knows this repo exists and can browse its files.
+
+## Queen's own skills (queen_skills/, 12.11.2026)
+
+affinity-open-close, band-poster, claude-link, describe-images, gemini-image, how-queen-works (her working rules and the
+assessment), live-check, next-concert, repo-reader, vision, web-photo; band profile santoshi_band.json. Each one has its route
+in qwen_app/ and, where useful, a chat sentence answered locally. Restart Queen after any change (she caches modules) and
+start her WITHOUT a Claude session's CLAUDE* variables.
+
+## Run log
+- 12.11.2026: skills folder; repo reader; eyes; local Claude link + consent gate; Affinity open/close; band posters, A4 poster-like,
+  Gemini full-bleed + three stripes EN/HR (.af + .png in ~/Pictures/<date> <project>/); site image catalogue to Excel; Allow
+  remote debugging by Macro Recorder; supervisor approve/reject; one chat per task; web-photo (Kukljica panorama live); live
+  screenshot-and-compare self-check; tabbed UI with the lightning full-screen.

@@ -48,3 +48,8 @@ Done: repo created from ~/.groq (qwen_app, groq_pool, groq_cli, launchers), TAKE
 > yes, self-checking. You need to teach her to self-check everything she does. Make a new interface for her, for Queen, in tabs, so each task is in a different tab. We have: - Settings task - Auto-update task - Chat task If you can find any more groupings, make it like this, so it's organizing better. The real estate of the application is used. Also, make an Easter egg, Groq Studio. There is an icon which is lightning. When I click on it, I go to full screen, and when I click again, I come back
 
 > please teach her how to screenshot and confirm that things are live. She can recognize, she can compare the image of what she did and find it on the page, and confirm the image is there
+
+**Status of the 12.11.2026 requests:** all done and pushed (skills folder and teach-Queen rule; local Claude link and API consent;
+Gemini posters EN/HR full-bleed and three stripes; account fallback; Pictures folder and .af + .png; Excel catalogue; assessment;
+Allow press by Macro Recorder; supervised web-photo with the panorama live; one chat per task; self-check; tabs; lightning
+full-screen). Open: the full-screen click not tested by a real click.
