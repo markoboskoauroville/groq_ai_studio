@@ -18,53 +18,60 @@ package, three files that reference each other, a config read back, and an hones
     allam-2-7b            Arabic-first, not benchmarked for code
     canopylabs/orpheus-*  speech only (6 fixed voices, no cloning)
 
-The surprise worth keeping: the CHEAPEST model was the most reliable. That is why roles are measured, not assumed.
+MARKO'S RULE, 12.11.2026: "qwen3.6-27b is our default model please don't use anything from open AI. accept Whisper."
+So no `openai/*` model is routed here, whatever it scored. The measurements above stay on the record because they were
+real, and because the rule is his choice, not a result: on this bench `openai/gpt-oss-20b` was the best value and
+`qwen/qwen3.8-27b` beat `qwen/qwen3.6-27b` on both score (10/10 against 9/10) and price ($0.0182 against $0.0667).
+Whisper is excepted by name and stays for speech in.
 """
 from __future__ import annotations
 
 # what each job needs, and the cheapest model measured to do it
 ROUTES: dict[str, dict] = {
     "code": {
-        "model": "openai/gpt-oss-20b",
-        "why": "10/10 on the stress battery and 7/7 on the extension ladder, at $0.0108 a run - "
-               "a ninth of qwen3.8-27b for the same score",
-        "fallback": ["qwen/qwen3.8-27b", "openai/gpt-oss-120b"],
+        "model": "qwen/qwen3.6-27b",
+        "why": "Marko's default, 12.11.2026. It scored 9/10 on the stress battery; the one miss was a JavaScript "
+               "formatting helper. qwen3.8-27b is the fallback and scored 10/10 for less.",
+        "fallback": ["qwen/qwen3.8-27b"],
     },
     "extension": {
-        "model": "openai/gpt-oss-20b",
-        "why": "7/7 on the extension ladder; gpt-oss-120b failed one on a JavaScript syntax error",
+        "model": "qwen/qwen3.6-27b",
+        "why": "Marko's default. Not benchmarked on the extension ladder; qwen3.8-27b was, and scored 7/7.",
         "fallback": ["qwen/qwen3.8-27b"],
     },
     "plan": {
-        "model": "openai/gpt-oss-20b",
-        "why": "planned the same chains as qwen3.8-27b and refused the impossible goal just as firmly",
+        "model": "qwen/qwen3.6-27b",
+        "why": "Marko's default for the brain too; qwen3.8-27b planned the same chains and refused the impossible "
+               "goal just as firmly",
         "fallback": ["qwen/qwen3.8-27b"],
     },
     "chat": {
-        "model": "openai/gpt-oss-20b",
-        "why": "fast and cheap; nothing measured favours a dearer model for conversation",
+        "model": "qwen/qwen3.6-27b",
+        "why": "Marko's default",
         "fallback": ["qwen/qwen3.8-27b"],
     },
     "long": {
         "model": "qwen/qwen3.8-27b",
-        "why": "kept as the choice for long or unusual work until something harder is benchmarked - "
-               "NOT a measured advantage, an unmeasured caution",
-        "fallback": ["openai/gpt-oss-120b"],
+        "why": "the stronger and cheaper of the two qwen models on this bench; kept for long or unusual work",
+        "fallback": ["qwen/qwen3.6-27b"],
     },
     "speech_out": {
         "model": "canopylabs/orpheus-v1-english",
         "why": "about 5x faster than real time; six fixed voices (autumn diana hannah austin daniel troy) "
-               "and NO voice cloning - the API rejects every reference-audio field",
+               "and NO voice cloning - the API rejects every reference-audio field. Cloning stays with Beatrice.",
         "fallback": [],
     },
     "speech_in": {
         "model": "whisper-large-v3",
-        "why": "13x faster than real time at 95.8% on a round trip through the speakers",
+        "why": "excepted by Marko by name; 13x faster than real time at 95.8% on a round trip through the speakers",
         "fallback": ["whisper-large-v3-turbo"],
     },
 }
 
-DEFAULT = "openai/gpt-oss-20b"
+# Marko, 12.11.2026: "please don't use anything from open AI. accept Whisper."
+BANNED_PREFIXES = ("openai/",)
+
+DEFAULT = "qwen/qwen3.6-27b"
 
 # words in the prompt that say what kind of job it is
 HINTS: list[tuple[str, tuple[str, ...]]] = [
@@ -93,9 +100,11 @@ def pick(prompt: str = "", kind: str | None = None, available: list[str] | None 
     route = ROUTES.get(k) or ROUTES["chat"]
     model = route["model"]
     chain = [model] + list(route.get("fallback", []))
+    chain = [m for m in chain if not m.startswith(BANNED_PREFIXES)]   # Marko's rule: no OpenAI models
     if available:
-        chain = [m for m in chain if m in available] or [DEFAULT]
-        model = chain[0]
+        chain = [m for m in chain if m in available]
+    chain = chain or [DEFAULT]
+    model = chain[0]
     return {"kind": k, "model": model, "why": route["why"], "chain": chain}
 
 

@@ -167,7 +167,8 @@ def bump_app_version(files_changed: list[str], message: str = "") -> int:
 
 VERSION = f"v{load_app_version()}"
 AUTO_UPDATE_REPO = "markoboskoauroville/groq-auto-update"
-DEFAULT_MODEL = "qwen/qwen3.8-27b"
+# Marko, 12.11.2026: "qwen3.6-27b is our default model please don't use anything from open AI. accept Whisper."
+DEFAULT_MODEL = "qwen/qwen3.6-27b"
 DEFAULT_PORT = 8765
 MAX_MESSAGES = 80
 

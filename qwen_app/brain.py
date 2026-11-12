@@ -28,7 +28,8 @@ brain_bp = Blueprint("brain", __name__)
 STATE = Path.home() / ".groq"
 TRAINING = STATE / "brain_training.json"
 ESCALATIONS = STATE / "brain_escalations.json"
-PLAN_MODEL = os.environ.get("BRAIN_MODEL", "qwen/qwen3.8-27b")
+# Marko, 12.11.2026: "qwen3.6-27b is our default model please don't use anything from open AI."
+PLAN_MODEL = os.environ.get("BRAIN_MODEL", "qwen/qwen3.6-27b")
 MAX_LESSONS = 12
 
 SYSTEM = """You are the brain of Macro Recorder on Marko's Mac. You turn a goal into a PLAN that Macro Recorder runs.
