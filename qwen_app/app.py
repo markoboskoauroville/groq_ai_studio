@@ -292,7 +292,9 @@ def build_queen_system_prompt(user_persona: str = "") -> str:
         f"`POST /api/affinity/do {{action, args}}` fires one; anything not in the database, look the call up with "
         f"`GET /api/affinity/api?q=...` (492 classes, 5601 members of Affinity's own SDK) and run it with "
         f"`POST /api/affinity/js {{script}}`; `POST /api/affinity/render` gives a JPEG back to check the result. "
-        f"Export and file opening return NOT_ALLOWED until Marko switches Desktop access on in Affinity's MCP settings.\n"
+        f"Export and file opening work on the Desktop only (Marko switched Desktop access on 12.11.2026). "
+        f"Canva's PAID AI (generateImage, generativeEditImage, generativeUpscale) and Canva cloud export are REFUSED "
+        f"by the client: Marko has no Canva subscription and will say when he has one. Use the local engine only.\n"
         f"   - Elevate Media Production (`🎬` button / `/api/elevate/board`, `/api/elevate/whatsapp`, `/api/elevate/whatsapp/draft`, `/api/elevate/drive-comments`, `/api/elevate/fetch-image`, `/api/elevate/gemini-chrome`, `/api/elevate/gemini-status`, `/api/elevate/resolve`).\n"
         f"7. Live Visible Self-Test Backdoor: `POST http://127.0.0.1:8765/api/test/live` (or `'t'` in terminal).\n"
     )

@@ -131,6 +131,8 @@ def register(app):
             out = aff.Affinity().execute(script)
         except SystemExit as exc:
             return jsonify(ok=False, error=str(exc)), 400
+        except SystemExit as exc:          # the client refuses on purpose (paid Canva, missing args)
+            return jsonify(ok=False, error=str(exc)), 400
         except Exception as exc:
             return jsonify(ok=False, error=f"{type(exc).__name__}: {exc}"), 500
         failed = out.strip().startswith(("Error", "TypeError", "ReferenceError", "SyntaxError"))
@@ -145,6 +147,8 @@ def register(app):
         aff = _client()
         try:
             out = aff.Affinity().execute(script)
+        except SystemExit as exc:          # the client refuses on purpose (paid Canva, missing args)
+            return jsonify(ok=False, error=str(exc)), 400
         except Exception as exc:
             return jsonify(ok=False, error=f"{type(exc).__name__}: {exc}"), 500
         failed = out.strip().startswith(("Error", "TypeError", "ReferenceError", "SyntaxError"))
@@ -163,6 +167,8 @@ def register(app):
             else:
                 res = a.call("render_spread", {"document_session_uuid": uuid,
                                                "spread_index": int(data.get("spread", 0))})
+        except SystemExit as exc:          # the client refuses on purpose (paid Canva, missing args)
+            return jsonify(ok=False, error=str(exc)), 400
         except Exception as exc:
             return jsonify(ok=False, error=f"{type(exc).__name__}: {exc}"), 500
         imgs = aff.Affinity.images(res)
