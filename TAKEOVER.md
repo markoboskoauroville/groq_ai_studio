@@ -112,3 +112,9 @@ its own - the client and the action database live in `~/Developer/MACRO_SKILLS` 
 The client is loaded **by path**: the bridge was first called `affinity.py` and `import affinity` found
 itself (AttributeError: no attribute affinity_pid). Affinity's own MCP server must be switched on in its
 Settings and the app restarted; the port is read from the process, never hard-coded. Skill: `affinity`.
+
+`POST /api/affinity/open` and `/close` (12.11.2026): open says "Affinity is already open." when it is and
+cancels the start-up pop-ups (Update Studios, the Welcome window); close never forces. A chat line that only
+asks to open or close Affinity is answered by `chat_app_command()` in the bridge before the model is called:
+model "local", cost 0. The bridge caches the client module, so Queen is restarted after a change to
+`MACRO_SKILLS/tools/affinity.py`.

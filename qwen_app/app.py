@@ -286,8 +286,10 @@ def build_queen_system_prompt(user_persona: str = "") -> str:
         f"6. Computer Control & Production Integrations built into Queen:\n"
         f"   - Star Menu & Startup (`⭐` button / `/api/star/startup`, `/api/star/action` for open/quit/read/press/fn on all 55 Mantra apps via STAR_API :8863).\n"
         f"   - Voice Engine & Subtitles (`🔊` button / `/api/voice/speak`, `/api/voice/speaking`, `/api/voice/pause`, `/api/voice/stop`, `/api/voice/hear` via MANTRA_VOICE :8837).\n"
-        f"   - Affinity, the Canva photo/vector/layout app (`/api/affinity/status`, `/actions`, `/api`, "
-        f"`/do`, `/js`, `/render`). It has its OWN MCP server and a complete JavaScript SDK: never click in it. "
+        f"   - Affinity, the Canva photo/vector/layout app (`/api/affinity/status`, `/open`, `/close`, `/actions`, `/api`, "
+        f"`/do`, `/js`, `/render`). `POST /api/affinity/open` opens it and cancels the Update Studios pop-up "
+        f"(Marko updates by hand); when it is already open the answer is exactly \"Affinity is already open.\". "
+        f"`POST /api/affinity/close` quits it normally, never forced. It has its OWN MCP server and a complete JavaScript SDK: never click in it. "
         f"`GET /api/affinity/actions?q=...` is the database of proven actions with their arguments; "
         f"`POST /api/affinity/do {{action, args}}` fires one; anything not in the database, look the call up with "
         f"`GET /api/affinity/api?q=...` (492 classes, 5601 members of Affinity's own SDK) and run it with "
@@ -805,6 +807,26 @@ def chat():
         if m.get("role") == "user":
             last_user_text = m.get("content", "")
             break
+
+    # "open Affinity" / "close Affinity": answered by the bridge, not the model (no tokens, no cost).
+    try:
+        from affinity_bridge import chat_app_command
+        local_answer = chat_app_command(last_user_text)
+    except Exception as _exc:
+        local_answer = None
+        print(f"[affinity] chat command skipped: {_exc}")
+    if local_answer:
+        def local_stream():
+            yield json.dumps({"t": local_answer}) + "\n"
+            yield json.dumps({"u": {
+                "prompt_tokens": 0, "completion_tokens": 0, "reasoning_tokens": 0, "answer_tokens": 0,
+                "total_tokens": 0, "cost": 0, "prompt_cost": 0, "completion_cost": 0,
+                "total_spent": load_ledger().get("total_spent", 0), "elapsed": 0, "speed": 0,
+                "req_id": f"local_affinity_{int(time.time()*1000)}", "confirmed": True,
+                "model": "local", "mode": output_mode, "served_by_key": "local", "failovers": 0,
+                "auto_detected_code": False}}) + "\n"
+        return Response(local_stream(), mimetype="application/x-ndjson",
+                        headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"})
 
     auto_detected_code = detect_code_intent(last_user_text)
     if auto_detected_code and output_mode != "code":

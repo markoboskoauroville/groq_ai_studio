@@ -11,8 +11,13 @@ SDK. This module gives Queen four things, all local, none of them costing a toke
     fire                     run one action, or any JavaScript, inside the running app
     look                     render a spread or the selection back as a JPEG
 
-Routes (registered by app.py): /api/affinity/status | /actions | /api/ | /do | /js | /render
+Routes (registered by app.py): /api/affinity/status | /open | /close | /actions | /api/ | /do | /js | /render
+
+/open and /close are also answered straight from Queen's chat ("open Affinity", "close Affinity"),
+without the model: chat_app_command() below. Marko, 12.11.2026: "If Affinity is already open, and you
+ask Queen to open Affinity, she should respond, 'Affinity is already open.'"
 """
+import re
 import base64
 import json
 import subprocess
@@ -57,6 +62,20 @@ def _actions():
         return {}
 
 
+_OPEN = re.compile(r"^\W*(please\W+)?(can you\W+)?(open|start|launch|run)\W+(the\W+)?affinity(\W+app)?\W*(please)?\W*$", re.I)
+_CLOSE = re.compile(r"^\W*(please\W+)?(can you\W+)?(close|quit|exit|stop)\W+(the\W+)?affinity(\W+app)?\W*(please)?\W*$", re.I)
+
+
+def chat_app_command(text):
+    """A chat line that only asks to open or close Affinity -> the answer, done locally; else None."""
+    t = (text or "").strip()
+    if _OPEN.match(t):
+        return _client().open_app()["message"]
+    if _CLOSE.match(t):
+        return _client().close_app()["message"]
+    return None
+
+
 def register(app):
     @app.get("/api/affinity/status")
     def affinity_status():
@@ -82,6 +101,22 @@ def register(app):
                   "Affinity's MCP server is off: Settings -> Model Context Protocol -> "
                   "Enable Affinity MCP, then restart Affinity."),
         )
+
+    @app.post("/api/affinity/open")
+    def affinity_open():
+        """Open Affinity and cancel its start-up pop-ups; says "Affinity is already open." when it is."""
+        try:
+            return jsonify(_client().open_app())
+        except Exception as exc:
+            return jsonify(ok=False, message=f"{type(exc).__name__}: {exc}"), 500
+
+    @app.post("/api/affinity/close")
+    def affinity_close():
+        """Quit Affinity normally; never forced (an unsaved document's question stays for Marko)."""
+        try:
+            return jsonify(_client().close_app())
+        except Exception as exc:
+            return jsonify(ok=False, message=f"{type(exc).__name__}: {exc}"), 500
 
     @app.get("/api/affinity/actions")
     def affinity_actions():
