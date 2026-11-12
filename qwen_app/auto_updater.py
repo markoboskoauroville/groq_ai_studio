@@ -36,21 +36,27 @@ DEV_REPO_DEFAULT = Path.home() / "Developer" / "groq_ai_studio"
 # Regex extractors (compiled without literal secret prefixes that look like real keys)
 RE_GROQ_KEY = re.compile(r"\bgsk_[A-Za-z0-9_-]{20,}\b")
 RE_ANTHROPIC_KEY = re.compile(r"\bsk-ant-[A-Za-z0-9_-]{20,}\b")
-RE_GOOGLE_KEY = re.compile(r"\bAIza[0-9A-Za-z_-]{30,}\b")
+RE_GOOGLE_KEY = re.compile(r"\b(?:AIza[0-9A-Za-z_-]{20,}|AQ\.[A-Za-z0-9_.-]{20,})\b")
 RE_GCLOUD_BEARER = re.compile(r"\bya29\.[0-9A-Za-z._-]{30,}\b")
 
-# Curated models per provider (ordered best surgical default first)
+# Curated models per provider (ordered best surgical default first — Pro + Flash/Fast models)
 CURATED_PROVIDER_MODELS: dict[str, list[dict[str, Any]]] = {
     "google": [
-        {"id": "gemini-2.5-flash", "label": "Gemini 2.5 Flash (Fast Surgical · $0.30/$2.50)"},
-        {"id": "gemini-2.5-pro", "label": "Gemini 2.5 Pro (Deep Architect · $1.25/$10.00)"},
-        {"id": "gemini-2.5-flash-lite", "label": "Gemini 2.5 Flash-Lite (Ultra-Cheap · $0.10/$0.40)"},
-        {"id": "gemini-2.0-flash", "label": "Gemini 2.0 Flash ($0.10/$0.40)"},
+        {"id": "gemini-3.8-flash", "label": "⚡ Fast · Gemini 3.8 Flash (Latest Fast Surgical · $0.30/$2.50)"},
+        {"id": "gemini-3.1-pro-preview", "label": "🧠 Pro · Gemini 3.1 Pro Preview (Flagship Architect · $1.25/$10.00)"},
+        {"id": "gemini-pro-latest", "label": "🧠 Pro · Gemini Pro Latest ($1.25/$10.00)"},
+        {"id": "gemini-2.5-pro", "label": "🧠 Pro · Gemini 2.5 Pro (Deep Architect · $1.25/$10.00)"},
+        {"id": "gemini-flash-latest", "label": "⚡ Fast · Gemini Flash Latest ($0.30/$2.50)"},
+        {"id": "gemini-3.5-flash", "label": "⚡ Fast · Gemini 3.5 Flash ($0.30/$2.50)"},
+        {"id": "gemini-2.5-flash", "label": "⚡ Fast · Gemini 2.5 Flash ($0.30/$2.50)"},
+        {"id": "gemini-flash-lite-latest", "label": "⚡ Fast-Lite · Gemini Flash-Lite Latest ($0.10/$0.40)"},
+        {"id": "gemini-3.5-flash-lite", "label": "⚡ Fast-Lite · Gemini 3.5 Flash-Lite ($0.10/$0.40)"},
+        {"id": "gemini-2.5-flash-lite", "label": "⚡ Fast-Lite · Gemini 2.5 Flash-Lite ($0.10/$0.40)"},
     ],
     "anthropic": [
-        {"id": "claude-sonnet-4-5", "label": "Claude Sonnet 4.5 (Surgical Engineer · $3/$15)"},
-        {"id": "claude-haiku-4-5", "label": "Claude Haiku 4.5 (Fast & Cheap · $1/$5)"},
-        {"id": "claude-opus-4-5", "label": "Claude Opus 4.5 (Flagship · $5/$25)"},
+        {"id": "claude-sonnet-4-5", "label": "⚡ Balanced · Claude Sonnet 4.5 (Surgical Engineer · $3/$15)"},
+        {"id": "claude-opus-4-5", "label": "🧠 Pro · Claude Opus 4.5 (Flagship Architect · $5/$25)"},
+        {"id": "claude-haiku-4-5", "label": "⚡ Fast · Claude Haiku 4.5 (Fast & Cheap · $1/$5)"},
         {"id": "claude-3-7-sonnet-latest", "label": "Claude 3.7 Sonnet ($3/$15)"},
         {"id": "claude-3-5-haiku-latest", "label": "Claude 3.5 Haiku ($0.80/$4)"},
     ],
@@ -58,14 +64,39 @@ CURATED_PROVIDER_MODELS: dict[str, list[dict[str, Any]]] = {
 
 # Exact USD per 1,000,000 tokens: (input_usd, output_usd, cache_write_usd, cache_read_usd)
 AUTO_UPDATE_PRICING: dict[str, tuple[float, float, float, float]] = {
-    # Google Gemini / Cloud
+    # Google Gemini / Cloud (Pro + Flash / Fast + Flash-Lite)
+    "gemini-3.8-flash": (0.30, 2.50, 0.30, 0.075),
+    "gemini-3.7-flash": (0.30, 2.50, 0.30, 0.075),
+    "gemini-3.6-flash": (0.30, 2.50, 0.30, 0.075),
+    "gemini-3.5-flash": (0.30, 2.50, 0.30, 0.075),
+    "gemini-3.5-flash-lite": (0.10, 0.40, 0.10, 0.025),
+    "gemini-3.1-pro-preview": (1.25, 10.00, 1.25, 0.31),
+    "gemini-3.1-flash-lite": (0.10, 0.40, 0.10, 0.025),
+    "gemini-pro-latest": (1.25, 10.00, 1.25, 0.31),
+    "gemini-flash-latest": (0.30, 2.50, 0.30, 0.075),
+    "gemini-flash-lite-latest": (0.10, 0.40, 0.10, 0.025),
     "gemini-2.5-flash": (0.30, 2.50, 0.30, 0.075),
     "gemini-2.5-flash-lite": (0.10, 0.40, 0.10, 0.025),
     "gemini-2.5-pro": (1.25, 10.00, 1.25, 0.31),
     "gemini-2.0-flash": (0.10, 0.40, 0.10, 0.025),
     "gemini-1.5-pro": (1.25, 5.00, 1.25, 0.31),
     "gemini-1.5-flash": (0.075, 0.30, 0.075, 0.018),
-    # Anthropic Claude
+    # Anthropic Claude - current generation (prices per 1M tokens, 12.11.2026)
+    # Cache write is 1.25x input; cache read is the published rate where Anthropic states one.
+    "claude-fable-5-2": (8.00, 40.00, 10.00, 0.20),
+    "claude-mythos-5-2": (8.00, 40.00, 10.00, 0.20),
+    "claude-fable-5-1": (10.00, 50.00, 12.50, 1.00),
+    "claude-fable-5": (10.00, 50.00, 12.50, 1.00),
+    "claude-opus-5-5": (4.00, 20.00, 5.00, 0.20),
+    "claude-opus-5": (5.00, 25.00, 6.25, 0.50),
+    "claude-opus-4-8": (5.00, 25.00, 6.25, 0.50),
+    "claude-opus-4-7": (5.00, 25.00, 6.25, 0.50),
+    "claude-opus-4-6": (5.00, 25.00, 6.25, 0.50),
+    "claude-sonnet-5-5": (2.00, 10.00, 2.50, 0.10),
+    "claude-sonnet-5": (2.00, 10.00, 2.50, 0.20),
+    "claude-sonnet-4-6": (3.00, 15.00, 3.75, 0.30),
+    "claude-haiku-5-5": (0.10, 0.50, 0.125, 0.01),
+    # Anthropic Claude - older, kept so an old ledger entry still prices correctly
     "claude-sonnet-4-5": (3.00, 15.00, 3.75, 0.30),
     "claude-sonnet-4-20250514": (3.00, 15.00, 3.75, 0.30),
     "claude-3-7-sonnet-latest": (3.00, 15.00, 3.75, 0.30),
@@ -435,25 +466,30 @@ def fetch_provider_models(provider: str, store_path: Path = AUTO_UPDATE_KEYS_FIL
     live_ok = False
     live_err = None
 
-    if keys:
-        key = keys[0]
+    for key in keys[:5]:
         try:
             with httpx.Client(timeout=8.0) as client:
                 if p == "google":
                     headers = {}
-                    url = "https://generativelanguage.googleapis.com/v1beta/models"
+                    url = "https://generativelanguage.googleapis.com/v1beta/models?pageSize=100"
                     if key.startswith("ya29."):
                         headers["Authorization"] = f"Bearer {key}"
                     else:
-                        url = f"{url}?key={key}"
+                        headers["x-goog-api-key"] = key
                     r = client.get(url, headers=headers)
                     if r.status_code == 200:
                         live_ok = True
+                        live_err = None
                         for item in r.json().get("models", []):
                             methods = item.get("supportedGenerationMethods") or []
                             name = (item.get("name") or "").replace("models/", "")
-                            if "generateContent" in methods and "gemini" in name and "tts" not in name and "image" not in name:
+                            if (
+                                "generateContent" in methods
+                                and "gemini" in name
+                                and not any(x in name for x in ("tts", "image", "audio", "live", "embedding"))
+                            ):
                                 live_ids.append(name)
+                        break
                     else:
                         live_err = f"HTTP {r.status_code}"
                 else:
@@ -466,10 +502,12 @@ def fetch_provider_models(provider: str, store_path: Path = AUTO_UPDATE_KEYS_FIL
                     )
                     if r.status_code == 200:
                         live_ok = True
+                        live_err = None
                         for item in r.json().get("data", []):
                             mid = item.get("id") or ""
                             if mid.startswith("claude-"):
                                 live_ids.append(mid)
+                        break
                     else:
                         live_err = f"HTTP {r.status_code}"
         except Exception as exc:
@@ -479,9 +517,10 @@ def fetch_provider_models(provider: str, store_path: Path = AUTO_UPDATE_KEYS_FIL
     for mid in live_ids:
         if mid not in curated_ids:
             rates = get_auto_update_rates(p, mid)
+            tier = "🧠 Pro · " if "pro" in mid or "opus" in mid else ("⚡ Fast · " if "flash" in mid or "haiku" in mid else "")
             merged_models.append({
                 "id": mid,
-                "label": f"{mid} (${rates[0]:g}/${rates[1]:g})",
+                "label": f"{tier}{mid} (${rates[0]:g}/${rates[1]:g})",
             })
 
     return {
@@ -623,9 +662,53 @@ def build_surgical_context(
     else:
         low = instruction.lower()
         chosen = []
-        if any(w in low for w in ("ui", "button", "topbar", "modal", "css", "color", "badge", "html", "banner", "footer", "sidebar", "split", "panel", "title", "header")):
+        if any(
+            w in low
+            for w in (
+                "ui",
+                "button",
+                "topbar",
+                "modal",
+                "css",
+                "color",
+                "badge",
+                "html",
+                "banner",
+                "footer",
+                "sidebar",
+                "column",
+                "left",
+                "tab",
+                "tabs",
+                "conversation",
+                "split",
+                "panel",
+                "title",
+                "header",
+            )
+        ):
             chosen.append("index.html")
-        if any(w in low for w in ("route", "endpoint", "flask", "/api/", "backend", "server", "python", "app.py", "header", "health")):
+        if any(
+            w in low
+            for w in (
+                "route",
+                "endpoint",
+                "flask",
+                "/api/",
+                "backend",
+                "server",
+                "python",
+                "app.py",
+                "header",
+                "health",
+                "tester",
+                "test all",
+                "keys",
+                "credit",
+                "supported",
+                "report",
+            )
+        ):
             chosen.append("app.py")
         if "auto_updater" in low:
             chosen.append("auto_updater.py")
@@ -646,48 +729,80 @@ def build_surgical_context(
         lines = fpath.read_text(encoding="utf-8").splitlines()
         total = len(lines)
 
-        # Collect structural landmarks + keyword match windows
-        landmarks: list[str] = []
+        # Collect keyword match windows
         hit_indices: list[int] = []
         for i, line in enumerate(lines):
-            s = line.strip()
-            if fname.endswith(".py") and (s.startswith("@app.") or s.startswith("def ") or s.startswith("class ")):
-                landmarks.append(f"L{i+1}: {s[:95]}")
-            elif fname.endswith(".html") and (
-                "id=\"" in s or "<!-- ══" in s or "// ═══" in s
-            ):
-                if len(landmarks) < 90:
-                    landmarks.append(f"L{i+1}: {s[:95]}")
             low_line = line.lower()
             if keywords and any(kw in low_line for kw in keywords):
                 hit_indices.append(i)
 
-        # Merge windows around keyword hits (up to 6 windows of +-18 lines) + key structural anchors
+        # Merge windows around keyword hits + key structural anchors
         windows: list[tuple[int, int]] = []
         anchor_seeds = hit_indices[:10]
+        low_inst = instruction.lower()
         if fname == "index.html":
+            want_sidebar = any(w in low_inst for w in ("sidebar", "column", "left", "tab", "conversation", "groq studio", "tester", "filter", "repo", "full-screen", "fullscreen", "panel", "load key"))
             for i, line in enumerate(lines):
                 if 'id="topbar"' in line or 'id="status-bar"' in line or "//  INIT" in line:
                     anchor_seeds.append(i)
+                if want_sidebar and (
+                    "/* ══ SIDEBAR ══ */" in line
+                    or 'id="sidebar"' in line
+                    or 'id="chat-pane"' in line
+                    or 'id="engineer-pane"' in line
+                    or 'function renderSidebar' in line
+                    or "document.getElementById(\"btn-load-key-file\")" in line
+                    or "//  KEY TESTER" in line
+                    or "function renderKeyTesterResults" in line
+                ):
+                    anchor_seeds.append(i)
         elif fname == "app.py":
+            # Always include top imports & globals (`pool`, `HOME`, `auto_updater` imports) so backend routes never guess symbols
+            anchor_seeds.extend([55, 313])
             for i, line in enumerate(lines):
-                if '@app.get("/health")' in line or '@app.get("/api/version")' in line:
+                if (
+                    '@app.get("/health")' in line
+                    or '@app.get("/api/version")' in line
+                    or '@app.get("/api/keys")' in line
+                    or '@app.post("/api/keys/import")' in line
+                    or '@app.post("/api/reset-keys")' in line
+                    or '@app.get("/api/key_tester/keys")' in line
+                    or '@app.post("/api/key_tester/run")' in line
+                    or "def test_google_key(" in line
+                    or "return jsonify(ok=True, summary=summary, results=results)" in line
+                    or '@app.get("/api/github/repos")' in line
+                ):
                     anchor_seeds.append(i)
 
         for idx in sorted(set(anchor_seeds)):
-            start = max(0, idx - 16)
-            end = min(total, idx + 22)
-            if windows and start <= windows[-1][1] + 4:
+            start = max(0, idx - 22)
+            end = min(total, idx + 45)
+            if windows and start <= windows[-1][1] + 8:
                 windows[-1] = (windows[-1][0], max(windows[-1][1], end))
             else:
                 windows.append((start, end))
-            if len(windows) >= 8:
+            if len(windows) >= 18:
                 break
 
         # Always include tail of file so appending routes/JS handlers is effortless
         tail_start = max(0, total - 35)
         if not windows or windows[-1][1] < tail_start:
             windows.append((tail_start, total))
+
+        # IMPORTANT: Only list landmarks that actually appear inside `windows` so the model NEVER guesses unseen function bodies!
+        def _in_windows(line_idx: int) -> bool:
+            return any(s <= line_idx < e for s, e in windows)
+
+        landmarks: list[str] = []
+        for i, line in enumerate(lines):
+            if not _in_windows(i):
+                continue
+            s = line.strip()
+            if fname.endswith(".py") and (s.startswith("@app.") or s.startswith("def ") or s.startswith("class ")):
+                landmarks.append(f"L{i+1}: {s[:95]}")
+            elif fname.endswith(".html") and ('id="' in s or "<!-- ══" in s or "// ═══" in s):
+                if len(landmarks) < 110:
+                    landmarks.append(f"L{i+1}: {s[:95]}")
 
         slice_text_parts: list[str] = []
         for s_idx, e_idx in windows:
@@ -696,7 +811,7 @@ def build_surgical_context(
 
         blocks.append(
             f"=== FILE: {fname} (total {total} lines) ===\n"
-            f"Landmarks:\n" + "\n".join(landmarks[:55]) + "\n\n"
+            f"Landmarks in excerpts below:\n" + "\n".join(landmarks[:65]) + "\n\n"
             + "\n\n".join(slice_text_parts)
         )
 
@@ -711,9 +826,10 @@ You are updating Groq AI Studio ("Queen" / `qwen`), a local macOS Flask + single
 
 CRITICAL EFFICIENCY & SAFETY RULES:
 1. NEVER rewrite whole files! Output ONLY surgical patches (`replace`, `insert_after`, or `insert_before`).
-2. Every `search` string MUST match verbatim lines from the provided file excerpts (including indentation). Keep `search` compact (3 to 15 lines) and unique.
-3. Preserve valid Python 3 AST syntax in `.py` files and balanced tags + balanced `{}` braces inside `<script>` in `index.html`.
-4. NEVER output fake keys or secrets (`gsk_`, `sk-ant-`, `AIza`).
+2. Every `search` string MUST match verbatim lines copied directly from the `--- <file> lines X-Y (exact verbatim text) ---` blocks (including indentation). NEVER guess unseen function bodies! Keep `search` compact (3 to 12 lines) and unique.
+3. NEVER emit two overlapping edits on the same function or region! Make ONE clean edit per function/section so an earlier edit never invalidates a later edit's `search` anchor.
+4. Preserve valid Python 3 AST syntax in `.py` files (`import httpx` or stdlib only; `load_auto_update_store` and `mask_secret` are importable from `auto_updater`, and `pool` is the global `DynamicKeyPool` in `app.py`) and balanced tags + balanced `{}` braces inside `<script>` in `index.html`.
+4. NEVER output fake keys or raw secret literals (`gsk_...`, `sk-ant-...`, `AIza...`, `AQ....`). Always mask keys (`mask_secret(k)` or `k[:6] + "…" + k[-4:]`).
 5. Wrap your final response inside `<queen_update>` and `</queen_update>` tags containing strictly valid JSON with this exact schema:
 
 <queen_update>
@@ -764,8 +880,8 @@ def parse_surgical_plan(raw_output: str) -> dict[str, Any]:
     return plan
 
 
-def _find_normalized_span(source: str, search: str) -> tuple[int, int] | None:
-    """Fallback line-by-line trailing-whitespace-insensitive locator."""
+def _find_normalized_span(source: str, search: str, action: str = "replace") -> tuple[int, int] | None:
+    """Fallback line-by-line trailing-whitespace-insensitive locator + unique decorator/block resolver."""
     src_lines = source.splitlines(keepends=True)
     needle_lines = [ln.rstrip() for ln in search.splitlines()]
     if not needle_lines:
@@ -776,6 +892,52 @@ def _find_normalized_span(source: str, search: str) -> tuple[int, int] | None:
             start_char = sum(len(x) for x in src_lines[:i])
             end_char = sum(len(x) for x in src_lines[: i + n])
             return start_char, end_char
+
+    # Safe whitespace-collapsed line matching (tolerates minor indentation shifts while requiring >=2 non-trivial lines)
+    norm_needle = [ln.strip() for ln in needle_lines]
+    non_trivial = [ln for ln in norm_needle if len(ln) >= 4]
+    if len(norm_needle) >= 2 and len(non_trivial) >= 2:
+        norm_matches: list[int] = []
+        for i in range(len(src_lines) - n + 1):
+            if [src_lines[i + j].strip() for j in range(n)] == norm_needle:
+                norm_matches.append(i)
+        if len(norm_matches) == 1:
+            i0 = norm_matches[0]
+            start_char = sum(len(x) for x in src_lines[:i0])
+            end_char = sum(len(x) for x in src_lines[: i0 + n])
+            return start_char, end_char
+
+    # Safe unique top-level anchor fallback for replace / insert_before / insert_after on Python routes/functions
+    first_nonempty = next((ln.strip() for ln in needle_lines if ln.strip()), "")
+    if action in ("replace", "insert_before", "insert_after") and len(first_nonempty) >= 12 and (
+        first_nonempty.startswith("@app.") or first_nonempty.startswith("def ") or first_nonempty.startswith("# ──")
+    ):
+        matches = [idx for idx, raw_ln in enumerate(src_lines) if raw_ln.strip() == first_nonempty]
+        if len(matches) == 1:
+            idx0 = matches[0]
+            start_char = sum(len(x) for x in src_lines[:idx0])
+            if action == "insert_before":
+                end_char = sum(len(x) for x in src_lines[: idx0 + 1])
+                return start_char, end_char
+            # For insert_after (or replace of a full route/function block), find the end of that top-level function
+            if action == "insert_after" or (action == "replace" and len(needle_lines) >= 6):
+                end_idx = idx0 + 1
+                saw_def = src_lines[idx0].lstrip().startswith("def ")
+                while end_idx < len(src_lines):
+                    ln = src_lines[end_idx]
+                    stripped = ln.strip()
+                    if stripped.startswith("def ") and not saw_def and not ln.startswith((" ", "\t")):
+                        saw_def = True
+                        end_idx += 1
+                        continue
+                    if saw_def and stripped and not ln.startswith((" ", "\t")) and not stripped.startswith(")"):
+                        break
+                    end_idx += 1
+                while end_idx > idx0 + 1 and not src_lines[end_idx - 1].strip():
+                    end_idx -= 1
+                end_char = sum(len(x) for x in src_lines[:end_idx])
+                return start_char, end_char
+
     return None
 
 
@@ -809,7 +971,7 @@ def apply_surgical_edits(
         if pos != -1:
             span = (pos, pos + len(search))
         else:
-            span = _find_normalized_span(src, search)
+            span = _find_normalized_span(src, search, action=action)
 
         if span is None:
             preview = search.splitlines()[0][:80] if search.splitlines() else search[:80]
@@ -874,7 +1036,7 @@ def _stream_anthropic_surgical(
     }
     payload = {
         "model": model,
-        "max_tokens": 4096,
+        "max_tokens": 16000,
         "temperature": 0.1,
         "system": system_prompt,
         "messages": [{"role": "user", "content": user_prompt}],
@@ -883,7 +1045,7 @@ def _stream_anthropic_surgical(
     chunks: list[str] = []
     usage = {"input_tokens": 0, "output_tokens": 0, "cache_write_tokens": 0, "cache_read_tokens": 0}
 
-    with httpx.Client(timeout=120.0) as client:
+    with httpx.Client(timeout=240.0) as client:
         with client.stream("POST", "https://api.anthropic.com/v1/messages", headers=headers, json=payload) as resp:
             if resp.status_code >= 400:
                 body = resp.read().decode("utf-8", errors="replace")
@@ -950,13 +1112,13 @@ def _stream_google_surgical(
         "contents": [{"role": "user", "parts": [{"text": user_prompt}]}],
         "generationConfig": {
             "temperature": 0.1,
-            "maxOutputTokens": 4096,
+            "maxOutputTokens": 16000,
         },
     }
     chunks: list[str] = []
     usage = {"input_tokens": 0, "output_tokens": 0, "cache_write_tokens": 0, "cache_read_tokens": 0}
 
-    with httpx.Client(timeout=120.0) as client:
+    with httpx.Client(timeout=240.0) as client:
         with client.stream("POST", url, headers=headers, json=payload) as resp:
             if resp.status_code >= 400:
                 body = resp.read().decode("utf-8", errors="replace")
@@ -1214,69 +1376,6 @@ def run_surgical_auto_update(
             )
             stream_buf["last_emit"] = now
 
-        if mock_plan is not None:
-            raw_model_output = "<queen_update>\n" + json.dumps(mock_plan, indent=2) + "\n</queen_update>"
-            _on_stream_delta("text", raw_model_output)
-            usage = {
-                "input_tokens": max(120, len(user_prompt) // 4),
-                "output_tokens": max(40, len(raw_model_output) // 4),
-                "cache_write_tokens": 0,
-                "cache_read_tokens": 0,
-            }
-        else:
-            last_err: Exception | None = None
-            raw_model_output = ""
-            usage = {"input_tokens": 0, "output_tokens": 0, "cache_write_tokens": 0, "cache_read_tokens": 0}
-            for attempt_idx, api_key in enumerate(keys, start=1):
-                try:
-                    term_print_fn(
-                        f"  \033[1;36m[Stage 2 · API]\033[0m Calling {chosen_provider} ({chosen_model}) with key {mask_secret(api_key)}…"
-                    )
-                    if chosen_provider == "anthropic":
-                        raw_model_output, usage = _stream_anthropic_surgical(
-                            api_key, chosen_model, SURGICAL_SYSTEM_PROMPT, user_prompt, _on_stream_delta
-                        )
-                    else:
-                        raw_model_output, usage = _stream_google_surgical(
-                            api_key, chosen_model, SURGICAL_SYSTEM_PROMPT, user_prompt, _on_stream_delta
-                        )
-                    last_err = None
-                    break
-                except Exception as exc:
-                    last_err = exc
-                    emit(
-                        "log",
-                        stage=2,
-                        message=f"Key #{attempt_idx} ({mask_secret(api_key)}) failed: {redact_secrets(str(exc))}",
-                    )
-            if last_err is not None:
-                raise RuntimeError(redact_secrets(str(last_err)))
-
-        plan = parse_surgical_plan(raw_model_output)
-        summary = (plan.get("summary") or instruction)[:200]
-        edu_notes = plan.get("educational_notes") or []
-        commit_msg = (plan.get("commit_message") or f"feat(auto-update): {summary}")[:140]
-        edits = plan.get("edits") or []
-
-        emit(
-            "plan_ready",
-            stage=2,
-            summary=summary,
-            educational_notes=edu_notes,
-            edits_count=len(edits),
-            working_on=f"Plan ready: {len(edits)} surgical edit(s) — {summary}",
-        )
-        term_print_fn(f"  \033[1;32m[Stage 2 · Plan]\033[0m {summary} ({len(edits)} surgical edit(s))")
-
-        # ── STAGE 3: Apply Surgical Edits In Memory & Build Unified Diff ──
-        emit(
-            "stage",
-            stage=3,
-            status="active",
-            title=EDUCATIONAL_STAGES[2]["title"],
-            lesson=EDUCATIONAL_STAGES[2]["lesson"],
-            working_on="Applying surgical patches in memory & computing unified diff…",
-        )
         qwen_src_dir = active_git_root / "qwen_app"
         originals: dict[str, str] = {}
         for fname in updatable_files:
@@ -1286,50 +1385,169 @@ def run_surgical_auto_update(
             if p.exists():
                 originals[fname] = p.read_text(encoding="utf-8")
 
-        changed_files, diffs, applied_meta = apply_surgical_edits(originals, edits, updatable_files)
-        if not changed_files:
-            raise ValueError("Surgical edits produced no net file changes.")
+        def _call_model_once(prompt_text: str) -> tuple[str, dict[str, int]]:
+            if mock_plan is not None:
+                raw_out = "<queen_update>\n" + json.dumps(mock_plan, indent=2) + "\n</queen_update>"
+                _on_stream_delta("text", raw_out)
+                return raw_out, {
+                    "input_tokens": max(120, len(prompt_text) // 4),
+                    "output_tokens": max(40, len(raw_out) // 4),
+                    "cache_write_tokens": 0,
+                    "cache_read_tokens": 0,
+                }
+            last_exc: Exception | None = None
+            for attempt_idx, api_key in enumerate(keys, start=1):
+                try:
+                    term_print_fn(
+                        f"  \033[1;36m[Stage 2 · API]\033[0m Calling {chosen_provider} ({chosen_model}) with key {mask_secret(api_key)}…"
+                    )
+                    if chosen_provider == "anthropic":
+                        return _stream_anthropic_surgical(
+                            api_key, chosen_model, SURGICAL_SYSTEM_PROMPT, prompt_text, _on_stream_delta
+                        )
+                    return _stream_google_surgical(
+                        api_key, chosen_model, SURGICAL_SYSTEM_PROMPT, prompt_text, _on_stream_delta
+                    )
+                except Exception as exc:
+                    last_exc = exc
+                    emit(
+                        "log",
+                        stage=2,
+                        message=f"Key #{attempt_idx} ({mask_secret(api_key)}) failed: {redact_secrets(str(exc))}",
+                    )
+            raise RuntimeError(redact_secrets(str(last_exc) if last_exc else "All API keys failed"))
 
-        for meta in applied_meta:
-            term_print_fn(
-                f"  \033[1;33m[Stage 3 · Patch]\033[0m {meta['file']}:L{meta['line']} ({meta['action']}) — {meta['section']}"
-            )
-            emit(
-                "patch_applied",
-                stage=3,
-                patch=meta,
-                working_on=f"Patched {meta['file']} at line {meta['line']} ({meta['section']})",
-            )
-
-        combined_diff = "\n\n".join(diffs.values())
-        emit(
-            "diff",
-            stage=3,
-            diffs=diffs,
-            combined_diff=combined_diff,
-            files_changed=list(changed_files.keys()),
-        )
-
-        # ── STAGE 4: Automated CI Validation Gate ──
-        emit(
-            "stage",
-            stage=4,
-            status="active",
-            title=EDUCATIONAL_STAGES[3]["title"],
-            lesson=EDUCATIONAL_STAGES[3]["lesson"],
-            working_on="Running Python AST & HTML/JS structural CI checks…",
-        )
+        usage = {"input_tokens": 0, "output_tokens": 0, "cache_write_tokens": 0, "cache_read_tokens": 0}
+        active_prompt = user_prompt
+        summary = ""
+        edu_notes: list[str] = []
+        commit_msg = ""
+        changed_files: dict[str, str] = {}
+        diffs: dict[str, str] = {}
+        applied_meta: list[dict[str, Any]] = []
         ci_report: dict[str, Any] = {}
         all_ci_errors: list[str] = []
-        for fname, new_code in changed_files.items():
-            # Secret leak check on generated patch before CI passes
-            leaked = extract_multi_provider_keys(new_code)
-            if leaked["groq"] or leaked["anthropic"] or leaked["google"]:
-                all_ci_errors.append(f"{fname}: SECURITY BLOCK — raw API key detected in generated code")
-            passed, errs = ci_run_all_fn(new_code, fname)
-            ci_report[fname] = {"passed": passed, "errors": errs, "bytes": len(new_code.encode("utf-8"))}
-            if not passed:
-                all_ci_errors.extend([f"{fname}: {e}" for e in errs])
+
+        max_repair_attempts = 2 if mock_plan is None else 0
+        for repair_round in range(max_repair_attempts + 1):
+            raw_model_output, step_usage = _call_model_once(active_prompt)
+            for uk in usage:
+                usage[uk] += int(step_usage.get(uk, 0))
+
+            try:
+                plan = parse_surgical_plan(raw_model_output)
+                summary = (plan.get("summary") or instruction)[:200]
+                edu_notes = plan.get("educational_notes") or []
+                commit_msg = (plan.get("commit_message") or f"feat(auto-update): {summary}")[:140]
+                edits = plan.get("edits") or []
+
+                emit(
+                    "plan_ready",
+                    stage=2,
+                    summary=summary,
+                    educational_notes=edu_notes,
+                    edits_count=len(edits),
+                    working_on=f"Plan ready: {len(edits)} surgical edit(s) — {summary}",
+                )
+                term_print_fn(f"  \033[1;32m[Stage 2 · Plan]\033[0m {summary} ({len(edits)} surgical edit(s))")
+
+                # ── STAGE 3: Apply Surgical Edits In Memory & Build Unified Diff ──
+                emit(
+                    "stage",
+                    stage=3,
+                    status="active",
+                    title=EDUCATIONAL_STAGES[2]["title"],
+                    lesson=EDUCATIONAL_STAGES[2]["lesson"],
+                    working_on="Applying surgical patches in memory & computing unified diff…",
+                )
+                changed_files, diffs, applied_meta = apply_surgical_edits(originals, edits, updatable_files)
+                if not changed_files:
+                    raise ValueError("Surgical edits produced no net file changes.")
+            except Exception as patch_exc:
+                if repair_round < max_repair_attempts:
+                    err_txt = redact_secrets(str(patch_exc))
+                    term_print_fn(f"  \033[1;33m[Stage 3 · Self-Heal]\033[0m {err_txt} — requesting exact anchor repair…")
+                    emit("log", stage=3, message=f"Self-healing patch anchor: {err_txt}")
+                    extra_ctx = ""
+                    for fn_cand in originals:
+                        if fn_cand in err_txt:
+                            fn_lines = originals[fn_cand].splitlines()
+                            m_near = re.search(r"near `([^`]+)`", err_txt)
+                            hint_tok = (m_near.group(1).strip() if m_near else "")[:40]
+                            hit_l = next((idx for idx, l in enumerate(fn_lines) if hint_tok and hint_tok in l), -1)
+                            if hit_l >= 0:
+                                s_l, e_l = max(0, hit_l - 20), min(len(fn_lines), hit_l + 30)
+                                extra_ctx = f"\nEXACT VERBATIM LINES FROM {fn_cand} ({s_l+1}-{e_l}):\n" + "\n".join(fn_lines[s_l:e_l])
+                    active_prompt = (
+                        f"{user_prompt}{extra_ctx}\n\n"
+                        f"PREVIOUS PATCH ATTEMPT FAILED WITH:\n{err_txt}\n"
+                        f"IMPORTANT: Do NOT emit two overlapping edits on the same function! Combine edits on the same function into ONE edit using exact verbatim `search` lines from the excerpts above, "
+                        f"and return the complete corrected `<queen_update>...</queen_update>` JSON."
+                    )
+                    continue
+                raise
+
+            for meta in applied_meta:
+                term_print_fn(
+                    f"  \033[1;33m[Stage 3 · Patch]\033[0m {meta['file']}:L{meta['line']} ({meta['action']}) — {meta['section']}"
+                )
+                emit(
+                    "patch_applied",
+                    stage=3,
+                    patch=meta,
+                    working_on=f"Patched {meta['file']} at line {meta['line']} ({meta['section']})",
+                )
+
+            combined_diff = "\n\n".join(diffs.values())
+            emit(
+                "diff",
+                stage=3,
+                diffs=diffs,
+                combined_diff=combined_diff,
+                files_changed=list(changed_files.keys()),
+            )
+
+            # ── STAGE 4: Automated CI Validation Gate ──
+            emit(
+                "stage",
+                stage=4,
+                status="active",
+                title=EDUCATIONAL_STAGES[3]["title"],
+                lesson=EDUCATIONAL_STAGES[3]["lesson"],
+                working_on="Running Python AST & HTML/JS structural CI checks…",
+            )
+            ci_report = {}
+            all_ci_errors = []
+            for fname, new_code in changed_files.items():
+                leaked = extract_multi_provider_keys(new_code)
+                if leaked["groq"] or leaked["anthropic"] or leaked["google"]:
+                    all_ci_errors.append(f"{fname}: SECURITY BLOCK — raw API key detected in generated code")
+                passed, errs = ci_run_all_fn(new_code, fname)
+                ci_report[fname] = {"passed": passed, "errors": errs, "bytes": len(new_code.encode("utf-8"))}
+                if not passed:
+                    all_ci_errors.extend([f"{fname}: {e}" for e in errs])
+
+            if all_ci_errors and repair_round < max_repair_attempts:
+                err_join = "; ".join(all_ci_errors)
+                term_print_fn(f"  \033[1;33m[Stage 4 · Self-Heal]\033[0m CI caught: {err_join} — requesting syntax repair…")
+                emit("log", stage=4, message=f"Self-healing CI issue: {err_join}")
+                err_snippets = []
+                for fname_err, new_c in changed_files.items():
+                    m_ln = re.search(rf"{re.escape(fname_err)}.*?line (\d+)", err_join)
+                    if m_ln:
+                        ln_no = int(m_ln.group(1))
+                        c_lines = new_c.splitlines()
+                        s_l, e_l = max(0, ln_no - 15), min(len(c_lines), ln_no + 15)
+                        numbered = "\n".join(f"L{k+1}: {c_lines[k]}" for k in range(s_l, e_l))
+                        err_snippets.append(f"BROKEN RESULT AROUND {fname_err} line {ln_no}:\n{numbered}")
+                extra_ci_ctx = ("\n\n" + "\n\n".join(err_snippets)) if err_snippets else ""
+                active_prompt = (
+                    f"{user_prompt}{extra_ci_ctx}\n\n"
+                    f"PREVIOUS PATCH FAILED CI VALIDATION WITH:\n{err_join}\n"
+                    f"Fix the syntax/balance error (make sure edits on the same function do NOT overlap) and return the complete corrected `<queen_update>...</queen_update>` JSON."
+                )
+                continue
+            break
 
         if all_ci_errors:
             cost_info = calculate_auto_update_cost(
