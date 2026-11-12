@@ -36,3 +36,11 @@ Done: repo created from ~/.groq (qwen_app, groq_pool, groq_cli, launchers), TAKE
 > also, if images are not generating, if there is a timeout, or if they are not generating after a few minutes, you need to go to the next profile
 
 > please ask Queen to press the button to allow remote debugging. So if I'm not here, that button should be pressed, asking our macro recorder to do it in natural motion with real mouse and keyboard
+
+## 12.11.2026, 17:40
+
+> /Users/markobosko/Pictures/Panorama Stitching/IMG_20251217_124553537_PANORAMA.tiff Please make this photo small size, good for web, and add it to the photo gallery inside my website Kuklica Eco Oasis.
+
+> please teach Queen how to do this Now you need to supervise her before each move. She's going to ask approval from you, so she doesn't mess up my website.
+
+> in queue with new task. Open the new chat with the title of the task, please

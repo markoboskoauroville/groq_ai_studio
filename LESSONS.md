@@ -110,3 +110,8 @@
 - Affinity scripts may touch the Desktop only (Pictures denied, even through a symlink): stage on the Desktop, keep in Pictures.
 - Gemini's picture came back 765 x 1024: enough for screens, soft for print. For print, ask Gemini for "high resolution" or
   upscale outside Canva's paid tools.
+- 12.11.2026, supervised website work: her first captions said "cloudy dawn" for a 12:45 photo, wrote "Bačinskoj uvali" (wrong
+  Croatian) and named a ridge and bay she could not see. Rejected; the skill now gives her the capture time from the file and
+  forbids unverifiable place names; the supervisor's approval note can correct the words without restarting the task.
+- The site repo had moved on (v4, another session's work) and my local copy was behind: the skill pulls first and refuses to
+  work on top of uncommitted changes.

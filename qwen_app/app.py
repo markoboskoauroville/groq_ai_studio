@@ -571,6 +571,12 @@ try:
     _register_gemini(app)
     from describe_skill import register as _register_describe
     _register_describe(app, pool, record_spend)
+    from supervisor import register as _register_supervisor
+    _register_supervisor(app)
+    import task_chat as _task_chat
+    _task_chat.setup(broadcast_event, CHATS_DIR)
+    from web_photo_skill import register as _register_web_photo
+    _register_web_photo(app, pool, record_spend)
 except Exception as _ps_exc:
     print(f"[poster_skill] not loaded: {_ps_exc}")
 
@@ -891,6 +897,9 @@ def chat():
         if not local_answer:
             from claude_link import chat_claude_command
             local_answer = chat_claude_command(last_user_text)
+        if not local_answer:
+            from web_photo_skill import chat_web_photo_command
+            local_answer = chat_web_photo_command(last_user_text, pool, record_spend)
         if not local_answer:
             from describe_skill import chat_describe_command
             local_answer = chat_describe_command(last_user_text, pool, record_spend)

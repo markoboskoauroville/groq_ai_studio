@@ -2356,6 +2356,14 @@ var backdoorMode = "normal";
           if (evt.auto_detected_code || (evt.telemetry||{}).auto_detected_code) setOutputMode("code",true);
         }
 
+        // A task Queen runs (12.11.2026, Marko: "Open the new chat with the title of the task"): its chat is opened when
+        // the task starts and refreshed at every step, proposal and decision.
+        if (evt.type==="task_chat" && evt.chat){
+          var c = evt.chat, isNew = !sessions[c.id];
+          sessions[c.id] = {id:c.id, title:c.title||"Task", messages:c.messages||[], ts:Date.now()};
+          if (isNew || currentSessionId===c.id){ currentSessionId = c.id; renderMessages(); }
+          saveSessions(); renderSidebar();
+        }
         if (evt.type==="keys_updated"||evt.type==="key_loaded"){
           refreshStatusKeys();
           if (evt.auto_update) syncAutoUpdateUI(evt.auto_update);

@@ -180,3 +180,16 @@ Queen must be started WITHOUT the CLAUDE* variables of a Claude session (env -u 
   lights / band photo / member portraits), English and Croatian, four posters.
 - `qwen_app/describe_skill.py`, `POST /api/skills/describe-images`: every image of a site repo described by her eyes into
   an Excel workbook in the project folder: Index tab + one tab per image named after the file (openpyxl, in Queen's Python).
+
+## Supervised work, task chats, photos onto a website (12.11.2026, night)
+
+- `qwen_app/supervisor.py`: Marko: "supervise her before each move ... so she doesn't mess up my website." A step that changes
+  something outside Queen is a proposal in ~/.groq/approvals/ (`/api/supervisor/propose|pending|get|decide`); a Claude Code
+  session decides with `queen pending`, `queen show <id>`, `queen approve <id> ["note"]`, `queen reject <id> "why"`.
+  `propose_and_wait()` blocks the skill; a reject or 30 minutes of silence stops it (silence is never a yes). An approval note
+  may carry corrections as JSON (the web-photo skill reads caption_en / caption_hr / alt from it).
+- `qwen_app/task_chat.py`: Marko: "Open the new chat with the title of the task." Every supervised task opens its own chat in
+  her window (event "task_chat", saved in ~/.groq/chats), and writes each step, proposal and decision there.
+- `qwen_app/web_photo_skill.py`, `POST /api/skills/web-photo {source, repo}`: web copy (2400 px JPEG <= 450 KB), captions EN/HR
+  from her eyes with the real capture time, PLAN -> CHANGE (exact diff) -> build check (auto undo) -> DEPLOY, each approved;
+  then the live page is checked. First run: the panorama of 17.12.2025 into a new Photo gallery section of KUKLJICA_ECOOASIS.
