@@ -351,6 +351,8 @@ def decide(j, c):
 
 # ---------------------------------------------------------------- run
 def run(a):
+    import threading
+    from concurrent.futures import ThreadPoolExecutor, wait, FIRST_COMPLETED
     job_dir = ROOT / a.job
     for sub in ("originals", "judge"):
         (job_dir / sub).mkdir(parents=True, exist_ok=True)
@@ -358,36 +360,31 @@ def run(a):
     cands = json.loads(cf.read_text()) if cf.exists() else {}
     Image = load_pil()
     Image.MAX_IMAGE_PIXELS = 400_000_000
-    spent = sum(v.get("cost", 0) for v in cands.values())
-    judged = sum(1 for v in cands.values() if "verdict" in v)
+    lock = threading.Lock()
+    st = {"spent": sum(v.get("cost", 0) for v in cands.values()),
+          "judged": sum(1 for v in cands.values() if "verdict" in v)}
     hashes = {k: v["hash"] for k, v in cands.items() if v.get("accepted") and v.get("hash")}
-    log(job_dir, f"start: {sum(1 for v in cands.values() if v.get('accepted'))} accepted, {judged} judged, ${spent:.2f} spent")
+    log(job_dir, f"start: {sum(1 for v in cands.values() if v.get('accepted'))} accepted, {st['judged']} judged, ${st['spent']:.2f} spent")
 
     def save():
-        cf.write_text(json.dumps(cands, indent=1))
+        with lock:
+            cf.write_text(json.dumps(cands, indent=1))
 
     def accepted():
         return sum(1 for v in cands.values() if v.get("accepted"))
 
-    def gens():
-        yield from roundrobin(gen_commons(job_dir), gen_openverse(job_dir), gen_bing(job_dir))
+    def dup(h):
+        with lock:
+            return any(hamming(h, o) <= 10 for o in list(hashes.values()))
 
-    for c in gens():
-        if accepted() >= a.target + a.spare:
-            break
-        if judged >= a.budget:
-            log(job_dir, "budget reached")
-            break
-        if c["id"] in cands:
-            continue
-        rec = dict(c)
-        cands[c["id"]] = rec
+    def process(c, rec):
+        key = hashlib.md5(c["id"].encode()).hexdigest()
         try:
-            jp = job_dir / "judge" / (hashlib.md5(c["id"].encode()).hexdigest() + ".jpg")
+            jp = job_dir / "judge" / (key + ".jpg")
             full_bytes = None
             raw = http(c["thumb"], timeout=60) if c["thumb"] else None
             if raw is None:                      # web result: the file itself is the only copy we have
-                raw = full_bytes = http(c["orig"], timeout=90, tries=2)
+                raw = full_bytes = http(c["orig"], timeout=40, tries=1)
                 if len(raw) > 60_000_000:
                     raise RuntimeError("file over 60 MB")
             im = Image.open(io.BytesIO(raw))
@@ -396,59 +393,79 @@ def run(a):
                 c["w"], c["h"] = rec["w"], rec["h"] = im.size
                 if max(im.size) < MIN_LONG:
                     rec["verdict"] = "reject"; rec["reason"] = f"too small ({im.size[0]}x{im.size[1]})"
-                    continue
+                    return
             rgb = im.convert("RGB")
             h = dhash(rgb)
-            if any(hamming(h, o) <= 10 for o in hashes.values()):
+            if dup(h):
                 rec["verdict"] = "reject"; rec["reason"] = "duplicate (perceptual hash)"
-                continue
+                return
             rgb.thumbnail((1024, 1024))
             rgb.save(jp, quality=85)
             q = JUDGE_Q.format(title=c["title"][:150], desc=c["desc"][:300], cats="; ".join(c["cats"])[:300])
             d = ask_queen(jp, q)
-            judged += 1
+            with lock:
+                st["judged"] += 1
             rec["cost"] = d.get("cost", 0)
-            spent += rec["cost"]
             ok, why = decide(d.get("json"), c)
             rec["judge"] = d.get("json")
             rec["reason"] = why
             rec["verdict"] = "accept?" if ok else "reject"
             if ok:
                 d2 = ask_queen(jp, CONFIRM_Q)
-                rec["cost"] += d2.get("cost", 0); spent += d2.get("cost", 0)
+                rec["cost"] += d2.get("cost", 0)
                 j2 = d2.get("json") or {}
                 rec["confirm"] = j2
                 if str(j2.get("act", "none")).lower() in ("none", "") or not j2.get("person_visible"):
                     ok = False; rec["reason"] = "second look: no clear act of worship"; rec["verdict"] = "reject"
             if ok:
-                # download the ORIGINAL and check it properly
-                ext = {"image/jpeg": ".jpg", "image/png": ".png", "image/webp": ".webp"}.get(
-                    "image/jpeg" if c["orig"].lower().endswith((".jpg", ".jpeg")) else
-                    "image/png" if c["orig"].lower().endswith(".png") else "image/webp", ".jpg")
-                of = job_dir / "originals" / (hashlib.md5(c["id"].encode()).hexdigest() + ext)
+                u = c["orig"].lower().split("?")[0]
+                ext = ".jpg" if u.endswith((".jpg", ".jpeg")) else ".png" if u.endswith(".png") else ".webp" if u.endswith(".webp") else ".jpg"
+                of = job_dir / "originals" / (key + ext)
                 body = full_bytes if full_bytes is not None else http(c["orig"], timeout=180)
                 of.write_bytes(body)
                 full = Image.open(of); full.load()
                 if max(full.size) < MIN_LONG:
-                    rec["verdict"] = "reject"; rec["reason"] = f"original only {full.size}"; of.unlink(); continue
+                    rec["verdict"] = "reject"; rec["reason"] = f"original only {full.size}"; of.unlink(); return
                 sh = sharpness(full)
                 rec["sharp"] = round(sh, 1)
                 if sh < MIN_SHARP:
-                    rec["verdict"] = "reject"; rec["reason"] = f"blurry (sharpness {sh:.0f})"; of.unlink(); continue
+                    rec["verdict"] = "reject"; rec["reason"] = f"blurry (sharpness {sh:.0f})"; of.unlink(); return
                 fh = dhash(full.convert("RGB"))
-                if any(hamming(fh, o) <= 10 for o in hashes.values()):
-                    rec["verdict"] = "reject"; rec["reason"] = "duplicate (perceptual hash)"; of.unlink(); continue
-                rec["accepted"] = True; rec["verdict"] = "accept"; rec["hash"] = fh; rec["file"] = of.name
+                if dup(fh):
+                    rec["verdict"] = "reject"; rec["reason"] = "duplicate (perceptual hash)"; of.unlink(); return
+                rec["hash"] = fh; rec["file"] = of.name
                 rec["size"] = list(full.size); rec["sha"] = hashlib.sha256(body).hexdigest()
-                hashes[c["id"]] = fh
-            log(job_dir, f"{c['id']} {rec['verdict']} ({rec['reason']}) accepted={accepted()} judged={judged} ${spent:.2f}")
+                with lock:
+                    hashes[c["id"]] = fh
+                    rec["accepted"] = True; rec["verdict"] = "accept"
         except Exception as e:
             rec["verdict"] = "error"; rec["reason"] = str(e)[:150]
-            log(job_dir, f"{c['id']} error {rec['reason']}")
-        if len(cands) % 5 == 0:
+        finally:
+            with lock:
+                st["spent"] += rec.get("cost", 0)
+            log(job_dir, f"{c['id']} {rec.get('verdict')} ({rec.get('reason')}) accepted={accepted()} judged={st['judged']} ${st['spent']:.2f}")
+
+    ex = ThreadPoolExecutor(max_workers=a.workers)
+    pending = set()
+    n = 0
+    for c in roundrobin(gen_commons(job_dir), gen_openverse(job_dir), gen_bing(job_dir)):
+        if accepted() >= a.target + a.spare or st["judged"] >= a.budget:
+            log(job_dir, "stopping: target or budget reached")
+            break
+        if c["id"] in cands:
+            continue
+        rec = dict(c)
+        cands[c["id"]] = rec
+        pending.add(ex.submit(process, c, rec))
+        n += 1
+        if n % 10 == 0:
             save()
+        while len(pending) >= a.workers * 2:
+            done, pending = wait(pending, return_when=FIRST_COMPLETED)
+    wait(pending)
+    ex.shutdown()
     save()
-    log(job_dir, f"run finished: accepted={accepted()} judged={judged} spent=${spent:.2f}")
+    log(job_dir, f"run finished: accepted={accepted()} judged={st['judged']} spent=${st['spent']:.2f}")
 
 
 def status(a):
@@ -514,6 +531,7 @@ if __name__ == "__main__":
     ap.add_argument("--target", type=int, default=222)
     ap.add_argument("--spare", type=int, default=30, help="extra accepted photos kept as replacements")
     ap.add_argument("--budget", type=int, default=2000, help="max Queen vision judgements")
+    ap.add_argument("--workers", type=int, default=8)
     ap.add_argument("--per-author", type=int, default=8)
     ap.add_argument("--folder", default="Ganesha worship Tamil Nadu (222) 13.11.2026")
     ap.add_argument("--force", action="store_true")
