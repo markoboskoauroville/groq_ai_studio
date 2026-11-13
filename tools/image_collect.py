@@ -545,10 +545,17 @@ class CDP:
 def gen_google(job_dir):
     """Google Images in the VM's Chrome (one new tab, no login): real mouse-wheel scrolling by CDP Input events, then the result JSON is read from the page."""
     try:
-        ver = jget("http://[::1]:9222/json/version")
-        br = CDP(cdp_connect(ver["webSocketDebuggerUrl"].replace("127.0.0.1", "[::1]").replace("localhost", "[::1]")))
+        host, ver = None, None
+        for h in ("127.0.0.1", "[::1]"):
+            try:
+                ver = jget(f"http://{h}:9222/json/version", timeout=5); host = h; break
+            except Exception:
+                pass
+        if not ver:
+            raise RuntimeError("no DevTools port 9222")
+        br = CDP(cdp_connect(ver["webSocketDebuggerUrl"].replace("localhost", host)))
         tid = br.call("Target.createTarget", {"url": "about:blank"})["targetId"]
-        pg = CDP(cdp_connect(f"ws://[::1]:9222/devtools/page/{tid}"))
+        pg = CDP(cdp_connect(f"ws://{host}:9222/devtools/page/{tid}"))
     except Exception as e:
         log(job_dir, f"google: Chrome not reachable ({str(e)[:100]})")
         return
