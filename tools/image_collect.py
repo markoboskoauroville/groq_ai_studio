@@ -598,6 +598,9 @@ def gen_google(job_dir):
             pass
 
 
+STOCK = re.compile(r"alamy|dreamstime|gettyimages|shutterstock|istockphoto|depositphotos|123rf|adobestock|stock\.adobe|pond5|etsy\.com|pinimg|redbubble|ebay|amazon|alamyimages|agefotostock|stockphoto|bigstock|dissolve|masterfile|canstockphoto|vecteezy|freepik|pngtree|craiyon|lexica|midjourney|playground|openart", re.I)
+
+
 def grab(a):
     """Download every shown result, filtered only by free local tests: opens as an image, long side >= a.min_px, not a duplicate. No vision, no Queen."""
     import threading
@@ -630,6 +633,8 @@ def grab(a):
 
     def one(c, rec):
         try:
+            if STOCK.search(c["orig"] + " " + (c.get("page") or "")):
+                rec["reason"] = "stock/preview/AI host (watermarked)"; return
             body = http(c["orig"], timeout=40, tries=1)
             if len(body) > 60_000_000:
                 raise RuntimeError("over 60 MB")
@@ -722,6 +727,10 @@ def eyesheet(a):
     for v in acc:
         if "eye_idx" not in v:
             v["eye_idx"] = nxt; nxt += 1
+    (J / "cands.json").write_text(json.dumps(cands, indent=1))
+    for v in acc:                      # free rule: watermarked stock / AI hosts are dropped without looking
+        if not v.get("eye_seen") and STOCK.search(v["orig"] + " " + (v.get("page") or "")):
+            v["eye_seen"] = True; v["eye_drop"] = True; v["eye_why"] = "stock host"
     (J / "cands.json").write_text(json.dumps(cands, indent=1))
     todo = [v for v in acc if not v.get("eye_seen")][a.skip:a.skip + a.n]
     (J / "eye").mkdir(exist_ok=True)
