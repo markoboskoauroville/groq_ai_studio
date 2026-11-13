@@ -65,7 +65,19 @@ def log(job_dir, msg):
         f.write(line + "\n")
 
 
+import threading
+_WM = threading.Semaphore(2)          # Wikimedia answers 429 to more than a couple of parallel downloads
+
+
 def http(url, data=None, headers=None, timeout=40, tries=4):
+    if "wikimedia.org" in url:
+        with _WM:
+            time.sleep(0.4)
+            return _http(url, data, headers, timeout, tries)
+    return _http(url, data, headers, timeout, tries)
+
+
+def _http(url, data=None, headers=None, timeout=40, tries=4):
     h = {"User-Agent": UA}
     h.update(headers or {})
     last = None
@@ -77,7 +89,7 @@ def http(url, data=None, headers=None, timeout=40, tries=4):
         except urllib.error.HTTPError as e:
             last = e
             if e.code in (429, 503):
-                time.sleep(8 * (i + 1))
+                time.sleep(10 * (i + 1))
             elif e.code in (400, 403, 404):
                 break
             else:
