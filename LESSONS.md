@@ -1,5 +1,9 @@
 # Groq AI Studio: lessons
 
+13.11.2026: ONE TAB. Every restart opened another Chrome tab (Marko: "please don't open Grok in 155 tabs. Always open Grok in
+  one tab"). QWEN_NO_BROWSER existed and was forgotten; now the server opens a tab only when no Queen page reconnects within
+  8 s of the start. Proven: restart -> "a Queen tab is already open: no new tab", Chrome still one tab.
+
 13.11.2026 (Queen's first renames, ten correction rounds; each one is now a test or a skill line)
 - Queen's chat commands only ran when typed by a person; her answers could not act. Now a command line in her answer runs.
 - She wrote placeholders (<exact name>) and they ran; she promised to "continue when the search answers" (there is no second turn).

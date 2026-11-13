@@ -3494,7 +3494,15 @@ def main():
     server_thread.start()
 
     def kick_in_browser():
-        time.sleep(0.35)
+        # ONE tab, always (Marko, 13.11.2026: "please don't open Grok in 155 tabs. Always open Grok in one tab").
+        # An open Queen page reconnects its /api/events stream within a few seconds of a restart; if one does, it
+        # IS the tab, and no new one is opened. A tab opens only when no page of hers is open anywhere.
+        for _ in range(16):
+            time.sleep(0.5)
+            with subscribers_lock:
+                if event_subscribers:
+                    print("[browser] a Queen tab is already open: no new tab", flush=True)
+                    return
         try:
             webbrowser.open(url)
         except Exception:
