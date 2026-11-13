@@ -685,7 +685,7 @@ def grab(a):
 def publish_grab(a):
     job_dir = ROOT / a.job
     cands = json.loads((job_dir / "cands.json").read_text())
-    pick = sorted([v for v in cands.values() if v.get("accepted")], key=lambda v: v.get("seq", 10**9))[:a.target]
+    pick = sorted([v for v in cands.values() if v.get("accepted") and v.get("eye_seen") and not v.get("eye_drop")], key=lambda v: v.get("seq", 10**9))[:a.target]
     pdir = job_dir / "publish"
     if pdir.exists():
         for f in pdir.iterdir():
@@ -708,6 +708,55 @@ def publish_grab(a):
     subprocess.run(["rclone", "copy", str(pdir), f"gdrive:{a.folder}", "--transfers", "4", "--stats-one-line", "-v"], check=True)
     out = subprocess.run(["rclone", "lsf", f"gdrive:{a.folder}"], capture_output=True, text=True).stdout.split()
     print(f"uploaded; Drive folder holds {len(out)} files (incl. sheet)")
+
+
+def eyesheet(a):
+    """Claude Code's eyes (no AI spend): contact sheets of the not-yet-reviewed downloads, 20 per sheet, numbered by eye_idx. Sheets in <job>/eye/."""
+    from PIL import ImageDraw
+    Image = load_pil()
+    Image.MAX_IMAGE_PIXELS = 400_000_000
+    J = ROOT / a.job
+    cands = json.loads((J / "cands.json").read_text())
+    acc = sorted([v for v in cands.values() if v.get("accepted")], key=lambda v: v.get("seq", 10**9))
+    nxt = max([v.get("eye_idx", 0) for v in acc] + [0]) + 1
+    for v in acc:
+        if "eye_idx" not in v:
+            v["eye_idx"] = nxt; nxt += 1
+    (J / "cands.json").write_text(json.dumps(cands, indent=1))
+    todo = [v for v in acc if not v.get("eye_seen")][a.skip:a.skip + a.n]
+    (J / "eye").mkdir(exist_ok=True)
+    cols = 5
+    for s0 in range(0, len(todo), 20):
+        chunk = todo[s0:s0 + 20]
+        rows = (len(chunk) + cols - 1) // cols
+        sh = Image.new("RGB", (cols * 320, rows * 320), "white")
+        for i, v in enumerate(chunk):
+            try:
+                im = Image.open(J / "originals" / v["file"]); im.draft("RGB", (640, 640)); im = im.convert("RGB"); im.thumbnail((310, 290))
+                sh.paste(im, ((i % cols) * 320, (i // cols) * 320))
+            except Exception:
+                pass
+            ImageDraw.Draw(sh).text(((i % cols) * 320 + 4, (i // cols) * 320 + 298), f"#{v['eye_idx']}  {v['size'][0]}px  {v['src'][:22]}", fill="black")
+        name = J / "eye" / f"sheet_{chunk[0]['eye_idx']:04d}-{chunk[-1]['eye_idx']:04d}.jpg"
+        sh.save(name, quality=82)
+        print(name)
+
+
+def eyemark(a):
+    """eyemark --lo 1 --hi 20 --drop 3,7,12 : mark #lo..#hi as seen by Claude Code; the listed numbers are dropped (staged/AI, logo, no worship, wrong place...)."""
+    J = ROOT / a.job
+    cands = json.loads((J / "cands.json").read_text())
+    drop = {int(x) for x in a.drop.split(",") if x.strip()}
+    n = d = 0
+    for v in cands.values():
+        i = v.get("eye_idx")
+        if i and a.lo <= i <= a.hi:
+            v["eye_seen"] = True; n += 1
+            v["eye_drop"] = i in drop
+            d += v["eye_drop"]
+    (J / "cands.json").write_text(json.dumps(cands, indent=1))
+    kept = sum(1 for v in cands.values() if v.get("eye_seen") and not v.get("eye_drop"))
+    print(f"marked {n} seen, {d} dropped; kept so far {kept}")
 
 
 def sheet(a):
@@ -779,7 +828,7 @@ def publish(a):
 
 if __name__ == "__main__":
     ap = argparse.ArgumentParser()
-    ap.add_argument("cmd", choices=["run", "status", "publish", "sheet", "grab", "publish-grab"])
+    ap.add_argument("cmd", choices=["run", "status", "publish", "sheet", "grab", "publish-grab", "eyesheet", "eyemark"])
     ap.add_argument("--job", default="ganesha-tn")
     ap.add_argument("--target", type=int, default=222)
     ap.add_argument("--spare", type=int, default=30, help="extra accepted photos kept as replacements")
@@ -787,10 +836,14 @@ if __name__ == "__main__":
     ap.add_argument("--workers", type=int, default=8)
     ap.add_argument("--per-author", type=int, default=8)
     ap.add_argument("--folder", default="Ganesha worship Tamil Nadu (222) 13.11.2026")
+    ap.add_argument("--lo", type=int, default=1)
+    ap.add_argument("--hi", type=int, default=0)
+    ap.add_argument("--drop", default="")
+    ap.add_argument("--skip", type=int, default=0)
     ap.add_argument("--min-px", type=int, default=1000)
     ap.add_argument("--n", type=int, default=20)
     ap.add_argument("--seed", type=int, default=1)
     ap.add_argument("--out", default="/tmp/sheet.jpg")
     ap.add_argument("--force", action="store_true")
     a = ap.parse_args()
-    {"run": run, "status": status, "publish": publish, "sheet": sheet, "grab": grab, "publish-grab": publish_grab}[a.cmd](a)
+    {"run": run, "status": status, "publish": publish, "sheet": sheet, "grab": grab, "publish-grab": publish_grab, "eyesheet": eyesheet, "eyemark": eyemark}[a.cmd](a)
