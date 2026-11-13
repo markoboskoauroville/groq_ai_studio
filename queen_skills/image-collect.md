@@ -27,3 +27,6 @@ burnt in, an empty shrine with a tiny person far off, and costumed children mimi
 (true = reject) and the second look says an empty shrine with a tiny far person is not worship. A candid real moment beats a perfect-looking one: if the light and faces look
 too perfect, say staged.
 Yield measured (first 1100 judged): about 2.5 accepted per 100 judged from Commons + Openverse + Bing; most rejects are too small (<1600 px), no people, no Ganesha. Plan on ~$4 per 25 accepted.
+RULE (Marko, 13.11.2026: "please don't spend my money on image recognition. Stop that"): NO PAID VISION WITHOUT MARKO'S EXPLICIT OK. Before any run that calls /api/vision/ask in a loop,
+state the number of calls and the cost and wait for his yes. The first Ganesha job spent about $4.3 on ~1200 judgements and was stopped by him. Without his OK only local,
+free filters run (size, sharpness, perceptual-hash dedup, file metadata) and nothing starts by itself.
