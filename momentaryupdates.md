@@ -76,3 +76,11 @@ makes the most sense needs to be at the top."
 automated workflow where Qwen's output and its corrections by the Opus model are recorded in a GitHub repository. The code
 should log each Qwen output, capture Opus's correction, and prepare a dataset for periodic fine-tuning. Include steps for data
 storage, versioning, and triggering the training process.""
+
+13.11.2026, Marko: "You are a senior AI engineer. Help me build a Hugging Face fine-tuning workflow. Goal: I use Qwen for tasks.
+Claude reviews Qwen's answers and provides corrections. I want to turn those corrections into a dataset. I want to periodically
+fine-tune Qwen using SFT and QLoRA. I want to save the resulting adapter to my private Hugging Face Hub repository. Please give
+me: 1. A JSONL dataset format for instruction, Qwen answer, corrected answer, and feedback. 2. A Python script using Hugging Face
+TRL SFTTrainer and PEFT QLoRA. 3. A script to upload the dataset and trained adapter to Hugging Face Hub. 4. A simple evaluation
+plan to compare the original Qwen and fine-tuned Qwen. 5. Clear instructions for GPU memory, batch size, learning rate, and how
+often to retrain. Assume I am a beginner and explain each step simply."

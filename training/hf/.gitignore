@@ -1,0 +1,4 @@
+out/
+compare*.jsonl
+compare*.report.json
+adapter-*/

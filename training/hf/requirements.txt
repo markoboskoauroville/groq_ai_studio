@@ -1,0 +1,10 @@
+# For the GPU machine that trains (Google Colab, Kaggle, a cloud GPU). Not needed on the Mac.
+# Ranges known to support Qwen3 and the TRL SFTConfig / prompt-completion API used here.
+torch>=2.4
+transformers>=4.51
+trl>=0.19
+peft>=0.15
+bitsandbytes>=0.45
+accelerate>=1.2
+datasets>=3.0
+huggingface_hub>=0.30
