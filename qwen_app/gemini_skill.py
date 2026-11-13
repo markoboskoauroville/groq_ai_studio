@@ -73,12 +73,13 @@ class CDP:
                 "chrome_allow", Path.home() / "Developer" / "MACRO_SKILLS" / "tools" / "chrome_allow_debugging.py")
             allow = importlib.util.module_from_spec(spec)
             spec.loader.exec_module(allow)
-            watcher = threading.Thread(target=lambda: self.allow_log.extend(allow.watch(45, 3, stop)), daemon=True)
+            watcher = threading.Thread(target=lambda: self.allow_log.extend(allow.watch(90, 3, stop)), daemon=True)
             watcher.start()
         except Exception as exc:
             self.allow_log.append(f"watcher not started: {exc}")
         try:
-            self.ws = websocket.create_connection(f"ws://127.0.0.1:{port}{path}", timeout=45, suppress_origin=True)
+            # Chrome may show "Allow remote debugging?" only after 20-40 s (13.11.2026): wait up to 90 s for the press
+            self.ws = websocket.create_connection(f"ws://127.0.0.1:{port}{path}", timeout=90, suppress_origin=True)
         except Exception as exc:
             raise GeminiError(f"cannot reach Chrome's DevTools on {port}: {exc} {self.allow_log}")
         finally:

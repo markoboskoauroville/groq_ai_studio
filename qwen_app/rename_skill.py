@@ -316,6 +316,10 @@ def rename_app(old, new, repo, chat):
         raise SkillError(f"push failed: {out[-300:]}")
     _, sha = _run(["git", "rev-parse", "HEAD"], cwd=d)
     slug = _slug(d)
+    if not list((d / ".github" / "workflows").glob("*.y*ml")):   # nothing builds on GitHub: do not wait 30 min for it
+        chat.say(f"Pushed {sha.strip()[:7]} to main. This repository has no GitHub build (it goes live with its own "
+                 f"deploy.sh, if it has one).\nTask finished.")
+        return {"repo": slug, "files": files, "build": "success", "built_on_github": False, "run": ""}
     chat.say(f"Pushed {sha.strip()[:7]} to main. Watching the GitHub Actions run.")
     colour, url = watch_run(slug, sha.strip(), chat)
     _, rel = _run(["gh", "release", "view", "-R", slug, "--json", "tagName,name,assets",
@@ -457,10 +461,16 @@ def ship(repo, message, chat):
     d = repo_dir(repo)
     _, st = _run(["git", "status", "--porcelain", "--untracked-files=no"], cwd=d)
     files = [l[3:] for l in st.splitlines() if l.strip()]
+    # new files too (13.11.2026: a book's chapters, plates and page were all new and ship left them out); .gitignore holds
+    _, new = _run(["git", "ls-files", "--others", "--exclude-standard"], cwd=d)
+    added = [f for f in new.splitlines() if f.strip()]
+    files += added
     if not files:
-        chat.say(f"Nothing to ship in {d.name}: no changed files.")
+        chat.say(f"Nothing to ship in {d.name}: no changed or new files.")
         raise SkillError("nothing to ship")
     _, diff = _run(["git", "diff", "--", *files], cwd=d)
+    if added:
+        diff = "NEW FILES:\n" + "\n".join(f"  {f} ({(d / f).stat().st_size // 1024} KB)" for f in added) + "\n\n" + diff
     chat.say(f"Plan: ship {len(files)} files of {d.name} ({_slug(d)}): {message}\n" + diff[:6000])
     supervisor.propose_and_wait(chat.title, "push", f"{len(files)} files: {message}", diff[:20000])
     _run(["git", "add", "--", *files], cwd=d)

@@ -173,7 +173,15 @@ def draw(repo, which, chat):
         prompt = f"{b['sketch_style']}\n\nThe scene: {scene}"
         acct = accounts[i % len(accounts)]                   # three accounts in turn
         t0 = time.time()
-        r = make_image(prompt, None, str(out.with_suffix(".png")), account=acct, wait=240, max_accounts=3)
+        for attempt in range(1, 4):   # Chrome sometimes does not answer its DevTools door (13.11.2026): wait, try again
+            try:
+                r = make_image(prompt, None, str(out.with_suffix(".png")), account=acct, wait=240, max_accounts=3)
+                break
+            except Exception as exc:
+                if "cannot reach Chrome" not in str(exc) or attempt == 3:
+                    raise
+                chat.say(f"Plate {name}: Chrome did not answer (try {attempt}); trying again in 20 s.")
+                time.sleep(20)
         png = Path(r["out"])
         _run(["sips", "-s", "format", "jpeg", "-s", "formatOptions", "82", "-Z", "1600", str(png), "--out", str(out)])
         png.unlink(missing_ok=True)
@@ -189,6 +197,13 @@ def draw(repo, which, chat):
 
 def build(repo, chat):
     d, _ = _book_dir(repo)
+    # the drawing runs in its own queue beside the writing; the book is built only when the drawing is done (13.11.2026)
+    from rename_skill import _QUEUES  # noqa: PLC0415
+    q = _QUEUES.get(f"{repo}-draw".lower())
+    if q and q["n"] > 0:
+        chat.say("Waiting for the drawing to finish before building.")
+        with q["lock"]:
+            pass
     code, out = _run(["python3", "build.py"], cwd=d)
     chat.say(f"Build {'OK' if code == 0 else 'FAILED'}: {out.strip()[-600:]}\nTask finished.")
     if code:
