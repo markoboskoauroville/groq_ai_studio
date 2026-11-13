@@ -143,3 +143,11 @@
 - 12.11.2026, the tabbed interface: the pop-ups (Star, Voice, Elevate, GitHub, Billing, Settings, Keys, Persona, Self-update)
   were MOVED into tabs with their ids, and openModal()/closeModal() switch tabs; each tab runs the old buttons' load code on
   arrival (the Star card said "Loading..." until it did). The auto-update split opens the Auto-update tab instead.
+
+13.11.2026, Queen reads the screen
+- First lie: Voice Engine idle, but a terminal's white text sat in the subtitle band and she quoted it as "subtitle text" (even in
+  invented broken lines). Fix: the question now defines a subtitle (orange, centred, large, spoken word red; window text is not one) and the
+  skill says so. After the fix: 4 negatives and 6 positives right (no reading playing = "no subtitle on screen"; playing = exact sentence).
+- The Voice Engine's phase flips between sentences ("making"): ask only while GET /speaking says playing; truth = its "sentence".
+- Cropping the band makes the negative easy; a whole-display question was tried too and also answered right.
+- Her python venv has no Quartz/PIL: the window list runs in /usr/bin/python3, resizing in sips, blank check by file size.

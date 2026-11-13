@@ -100,4 +100,4 @@ dj mantra. For the books, donation yes. it is one more task for Quinn to attach 
 three and don't forget to mention this cost analysis in the book we just did with RunPod and Groq calls"
 
 13.11.2026, Marko: "don't ask me if I see something. You have screen-capturing possibilities with Macro Recorder and with our Queen, so use that teach the queen to learn to read screens and ask her if there's a subtitle on the screen. She must tell you. If she lies, then you fix her skill."
-Status: started (route /api/screen/look, skill read-screen.md, truth tests against the Voice Engine subtitle).
+Status: DONE 13.11.2026 (route /api/screen/look + chat command, skill read-screen.md, installed, restarted, 6 positive / 4 negative trials right after one fix, pushed).

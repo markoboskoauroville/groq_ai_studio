@@ -1,5 +1,13 @@
 # Groq AI Studio: takeover
 
+## 13.11.2026: Queen reads the screen (`qwen_app/screen_look.py`, skill `queen_skills/read-screen.md`)
+Marko: "don't ask me if I see something ... teach the queen to learn to read screens and ask her if there's a subtitle on the screen."
+`POST /api/screen/look {question, display?: 1|2|"all", region?, window?}`: silent `screencapture -x` (-D / -R / -l of the biggest window of an
+app via CGWindowList), sips downscale (1800 px), blank guard (PNG under 12 KB = capture failure, she is not asked), then /api/vision/ask with an
+"only what is visible, quote exactly, else 'not visible'" guard. Chat command (local, $0): "is there a subtitle on the screen?", "look at the
+MacBook screen: ...". Subtitle questions crop to the band [0,700,2560,160] and carry the subtitle definition. Screenshots: ~/.groq/work/screen_*.png.
+Tested against the Voice Engine truth (GET :8837/speaking), see LESSONS.md.
+
 ## 13.11.2026: her outputs and Claude's corrections become training data
 Marko: "Qwen's output and its corrections by the Opus model are recorded in a GitHub repository ... prepare a dataset for
 periodic fine-tuning ... data storage, versioning, and triggering the training process." `training_log.py` records every

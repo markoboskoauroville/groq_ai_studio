@@ -579,6 +579,8 @@ try:
     _register_web_photo(app, pool, record_spend)
     from live_check import register as _register_live_check
     _register_live_check(app, pool, record_spend)
+    from screen_look import register as _register_screen_look
+    _register_screen_look(app, pool, record_spend)
     from news import register as _register_news
     _register_news(app, pool, record_spend)
     from data_sync import register as _register_data_sync
@@ -913,6 +915,9 @@ def chat():
         if not local_answer:
             from web_photo_skill import chat_web_photo_command
             local_answer = chat_web_photo_command(last_user_text, pool, record_spend)
+        if not local_answer:
+            from screen_look import chat_screen_command
+            local_answer = chat_screen_command(last_user_text, pool, record_spend)
         if not local_answer:
             from describe_skill import chat_describe_command
             local_answer = chat_describe_command(last_user_text, pool, record_spend)
