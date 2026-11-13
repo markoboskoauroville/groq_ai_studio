@@ -239,9 +239,12 @@ kolam and offerings". Metadata of the file (may help with the place, but your ey
 TITLE: {title}
 DESCRIPTION: {desc}
 CATEGORIES: {cats}
-Answer ONE JSON object with these keys:
-real_photo (true only for a real camera photograph; false for AI-generated, illustration, painting, 3D render, drawing),
-watermark_or_stock_preview (visible watermark / stock agency overlay), collage_or_screenshot (several pictures joined, a screenshot, a poster, a phone UI),
+Answer ONE JSON object with these keys, in this order:
+look (two plain sentences: what exactly is in the picture and what the people are doing),
+real_photo (true for an ordinary real camera photograph; false only for AI-generated pictures, illustrations, paintings, 3D renders),
+single_photograph (true when it is ONE ordinary photograph, one frame; false ONLY if it is clearly several pictures joined side by side or in a grid,
+a screenshot with phone/browser interface, or a poster with large text boards. A normal wide or tall photo of a crowd is single_photograph = true),
+clean_of_watermark (true when there is no large watermark, stock-agency overlay or logo across the picture; false only if there is one),
 ganesha_visible (a Ganesha image/idol/shrine is clearly in the picture),
 people_count (number of people clearly visible, integer),
 people_worshipping (true ONLY if at least one visible person is clearly engaged in worship or festival devotion towards Ganesha: praying with folded hands,
@@ -260,9 +263,9 @@ def decide(j, c):
         return False, "no judgement"
     if not j.get("real_photo"):
         return False, "not a real photo (AI/illustration)"
-    if j.get("watermark_or_stock_preview"):
+    if j.get("clean_of_watermark") is False:
         return False, "watermark / stock preview"
-    if j.get("collage_or_screenshot"):
+    if j.get("single_photograph") is False:
         return False, "collage / screenshot"
     if not j.get("ganesha_visible"):
         return False, "no Ganesha visible"

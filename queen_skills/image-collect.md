@@ -18,3 +18,7 @@ Result: Drive folder with 001_<short-description>.<ext> ... and 000_sheet.csv (n
 Cost: about $0.004 to $0.01 per judged candidate; cap with budget; say the spent total. Judgements are cached in cands.json: a re-run costs nothing for old ones.
 Self-check before "done" (rule 8): count the Drive folder with `rclone lsf`; open 20 at random with your eyes AND show Claude a contact sheet; replace any misfit; report
 accepted, rejected and why, license mix. If you cannot reach 222 honestly, say how many you have and what is missing; never pad with misfits.
+Lesson 1 (13.11.2026, measured on the first 8 candidates): asked "collage_or_screenshot?" you answered TRUE for every picture, including plain beach photographs
+(your own reasons even said "beach scene, people carrying the idol"). A negative flag that costs the picture is answered carelessly. The script now asks positive
+questions (`single_photograph`, `clean_of_watermark`: true = fine, false only when it is clearly several pictures joined, a phone screenshot, a poster, a visible
+watermark) and first makes you write what you see (`look`). Keep every judging question positive and put the description before the verdict.
