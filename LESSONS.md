@@ -1,5 +1,9 @@
 # Groq AI Studio: lessons
 
+13.11.2026: SPEAK WAS DEAD. The voice engine answers {"ok": true, ...}; six proxy routes did jsonify(ok=ok, **res), a duplicate
+  keyword, so every Speak was a 500, and the page swallowed the error (its status sat in the Tools tab). Now {**res, "ok": ok}
+  and a failed Speak shows a red message where Marko clicked.
+
 13.11.2026: ONE TAB. Every restart opened another Chrome tab (Marko: "please don't open Grok in 155 tabs. Always open Grok in
   one tab"). QWEN_NO_BROWSER existed and was forgotten; now the server opens a tab only when no Queen page reconnects within
   8 s of the start. Proven: restart -> "a Queen tab is already open: no new tab", Chrome still one tab.

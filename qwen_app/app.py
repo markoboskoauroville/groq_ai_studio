@@ -2463,14 +2463,14 @@ def voice_speaking():
     ok, code, res = _http_json(f"{VOICE_API_BASE}/speaking", method="GET", timeout=3.0)
     if not ok:
         return jsonify(ok=False, voice_online=False, on=False, error=res.get("error", "Voice engine offline")), 200
-    return jsonify(ok=True, voice_online=True, **res)
+    return jsonify(**{**res, "ok": True, "voice_online": True})
 
 
 @app.get("/api/voice/voices")
 def voice_list_voices():
     """List available voices and current voice settings from MANTRA_VOICE (:8837/voices)."""
     ok, code, res = _http_json(f"{VOICE_API_BASE}/voices", method="GET", timeout=4.0)
-    return jsonify(ok=ok, **res), (200 if ok else code)
+    return jsonify(**{**res, "ok": ok}), (200 if ok else code)
 
 
 @app.post("/api/voice/speak")
@@ -2485,21 +2485,21 @@ def voice_speak():
         if opt in data:
             payload[opt] = data[opt]
     ok, code, res = _http_json(f"{VOICE_API_BASE}/speak", method="POST", payload=payload, timeout=20.0)
-    return jsonify(ok=ok, **res), (200 if ok else code)
+    return jsonify(**{**res, "ok": ok}), (200 if ok else code)
 
 
 @app.post("/api/voice/pause")
 def voice_pause():
     """Toggle pause/resume on MANTRA_VOICE (:8837/speak/pause)."""
     ok, code, res = _http_json(f"{VOICE_API_BASE}/speak/pause", method="POST", payload={}, timeout=4.0)
-    return jsonify(ok=ok, **res), (200 if ok else code)
+    return jsonify(**{**res, "ok": ok}), (200 if ok else code)
 
 
 @app.post("/api/voice/stop")
 def voice_stop():
     """Stop active speech & clear subtitles on MANTRA_VOICE (:8837/speak/stop)."""
     ok, code, res = _http_json(f"{VOICE_API_BASE}/speak/stop", method="POST", payload={}, timeout=4.0)
-    return jsonify(ok=ok, **res), (200 if ok else code)
+    return jsonify(**{**res, "ok": ok}), (200 if ok else code)
 
 
 @app.post("/api/voice/hear")
@@ -2515,7 +2515,7 @@ def voice_hear():
     else:
         raw = request.get_data()
         ok, code, res = _http_json(f"{VOICE_API_BASE}/hear?{qs}", method="POST", raw_body=raw, content_type=ct, timeout=60.0)
-    return jsonify(ok=ok, **res), (200 if ok else code)
+    return jsonify(**{**res, "ok": ok}), (200 if ok else code)
 
 
 # ─────────────── ELEVATE MEDIA PRODUCTION (/api/elevate/*) ───────────────

@@ -63,3 +63,10 @@ key"): say so in the plan, and never answer that dialog yourself.
 Round 8 (13.11.2026): the APK file kept "mantra-remote-vnc" (the dashed file-name form). The rename now changes the dashed and
 underscored forms too, but never inside a web address. A repository rename now also moves the code's links to the new address
 (a new version). To move links by hand: rename app "<owner>/<OLD_REPO>" to "<owner>/<NEW_REPO>" in <NEW_REPO>.
+
+Ship a prepared change (13.11.2026): when Claude Code has written code into a repository (a new feature), you ship it:
+  ship <REPO> "<one-line commit message>"
+It shows the diff, waits for approval, commits, pushes to main and watches the build. Then `install latest <REPO>`.
+Write both lines, in that order (they queue).
+Round 11 (13.11.2026): a ship message said "RDP" for a VNC viewer; rejected. Commit messages stay in history: write them from the
+words of the request, never add a technical term you are not sure of.

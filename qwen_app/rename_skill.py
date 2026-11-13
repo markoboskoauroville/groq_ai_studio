@@ -450,11 +450,43 @@ def install_latest(repo, chat, replacing=None):
     return result
 
 
+def ship(repo, message, chat):
+    """Ship a change Claude Code prepared in the repo (13.11.2026: Claude writes the code, Queen ships it): the diff of the
+    tracked changes -> approve -> commit -> push to main -> the GitHub Actions run watched to its colour."""
+    import supervisor  # noqa: PLC0415
+    d = repo_dir(repo)
+    _, st = _run(["git", "status", "--porcelain", "--untracked-files=no"], cwd=d)
+    files = [l[3:] for l in st.splitlines() if l.strip()]
+    if not files:
+        chat.say(f"Nothing to ship in {d.name}: no changed files.")
+        raise SkillError("nothing to ship")
+    _, diff = _run(["git", "diff", "--", *files], cwd=d)
+    chat.say(f"Plan: ship {len(files)} files of {d.name} ({_slug(d)}): {message}\n" + diff[:6000])
+    supervisor.propose_and_wait(chat.title, "push", f"{len(files)} files: {message}", diff[:20000])
+    _run(["git", "add", "--", *files], cwd=d)
+    code, out = _run(["git", "commit", "-q", "-m", message + "\n\nShipped by Queen (Groq AI Studio), approved by the supervisor."], cwd=d)
+    if code:
+        raise SkillError(f"commit failed: {out[-300:]}")
+    code, out = _run(["git", "pull", "-q", "--rebase", "origin", "main"], cwd=d)
+    code, out = _run(["git", "push", "-q", "origin", "main"], cwd=d)
+    if code:
+        raise SkillError(f"push failed: {out[-300:]}")
+    _, sha = _run(["git", "rev-parse", "HEAD"], cwd=d)
+    slug = _slug(d)
+    chat.say(f"Pushed {sha.strip()[:7]} to main. Watching the GitHub Actions run.")
+    colour, url = watch_run(slug, sha.strip(), chat)
+    _, rel = _run(["gh", "release", "view", "-R", slug, "--json", "tagName,name", "-q", '.tagName + " | " + .name'])
+    chat.say(f"Build: {colour.upper()} {url}\nLatest release: {rel.strip()}\n" + ("Task finished." if colour == "success" else
+             "The change is pushed but the build did not pass: look at the run."))
+    return {"repo": slug, "files": files, "build": colour, "run": url, "release": rel.strip()}
+
+
 # ---------- chat ----------
 
 _OPEN = re.compile(r"^\s*(open|quit)\s+app\s+(?P<name>.+?)\s*$", re.I)
 _RENAME_APP = re.compile(r'^\s*rename\s+app\s+"(?P<old>[^"]+)"\s+to\s+"(?P<new>[^"]+)"\s+in\s+(?P<repo>[\w./-]+)\s*$', re.I)
 _RENAME_REPO = re.compile(r"^\s*rename\s+repo\s+(?P<old>[\w./-]+)\s+to\s+(?P<new>[\w.-]+)\s*$", re.I)
+_SHIP = re.compile(r'^\s*ship\s+(?P<repo>[\w./-]+)\s+"(?P<msg>[^"]+)"\s*$', re.I)
 _INSTALL = re.compile(r'^\s*install\s+latest\s+(?P<repo>[\w./-]+)(\s+replacing\s+"(?P<old>[^"]+)")?\s*$', re.I)
 
 
@@ -499,7 +531,7 @@ def _task(title, fn, repo=None):
 
 def chat_rename_command(text):
     t = (text or "").strip()
-    if re.match(r"^(open|quit|rename|install|make)\s", t, re.I) and re.search(r"<[^>]*>", t):
+    if re.match(r"^(open|quit|rename|install|make|ship)\s", t, re.I) and re.search(r"<[^>]*>", t):
         return ("Not run: the command still has a placeholder in angle brackets. Write the real name (a hint is enough: "
                 "the skill finds the exact name itself).")
     m = _OPEN.match(t)
@@ -519,6 +551,10 @@ def chat_rename_command(text):
     if m:
         old, new = m.group("old"), m.group("new")
         return _task(f"Rename repo {old.split('/')[-1]} -> {new}", lambda c: rename_repo(old, new, c), old)
+    m = _SHIP.match(t)
+    if m:
+        repo, msg = m.group("repo"), m.group("msg")
+        return _task(f"Ship {repo.split('/')[-1]}: {msg[:50]}", lambda c: ship(repo, msg, c), repo)
     m = _INSTALL.match(t)
     if m:
         repo, old = m.group("repo"), m.group("old")

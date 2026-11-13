@@ -2699,6 +2699,15 @@ async function refreshVoiceStatus(){
   }
 }
 
+function showToast(msg){   // a short message where Marko is looking (13.11.2026)
+  var t = document.createElement("div");
+  t.textContent = msg;
+  t.style.cssText = "position:fixed;left:50%;bottom:90px;transform:translateX(-50%);z-index:9999;background:var(--bg-panel);" +
+    "color:var(--red);border:1px solid var(--red);border-radius:8px;padding:8px 14px;font:600 13px var(--font);max-width:80vw";
+  document.body.appendChild(t);
+  setTimeout(function(){ t.remove(); }, 6000);
+}
+
 async function speakWithVoiceEngine(text){
   try {
     var res = await fetch("/api/voice/speak", {
@@ -2706,10 +2715,12 @@ async function speakWithVoiceEngine(text){
       headers: {"Content-Type": "application/json"},
       body: JSON.stringify({text: text})
     });
-    var d = await res.json();
+    var d = await res.json().catch(function(){ return {ok:false, error:"Queen answered " + res.status}; });
     var el = document.getElementById("voice-action-status");
     if (el) el.textContent = d.ok ? "✓ Speaking aloud with subtitles…" : ("⚠ " + (d.error || "Failed"));
-  } catch(e){}
+    // 13.11.2026: a failed Speak was silent (the status sat in the Tools tab). Now it says so where Marko clicked.
+    if (!d.ok) showToast("Speak failed: " + (d.error || ("error " + res.status)));
+  } catch(e){ showToast("Speak failed: " + e.message); }
 }
 
 document.getElementById("btn-voice-speak").onclick = function(){
