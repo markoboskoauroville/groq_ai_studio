@@ -1,5 +1,15 @@
 # Groq AI Studio: takeover
 
+## 13.11.2026: her outputs and Claude's corrections become training data
+Marko: "Qwen's output and its corrections by the Opus model are recorded in a GitHub repository ... prepare a dataset for
+periodic fine-tuning ... data storage, versioning, and triggering the training process." `training_log.py` records every
+answer of hers (an "output" with a turn id), every approve/reject of her steps with its note ("verdict", linked to the turn
+through the task and the proposal), and every better answer Claude writes (`queen correct <turn|last> "<better>" ["why"]`):
+~/.groq/training/events/<date>.jsonl, mirrored to the private groq_ai_studio_data (training/). `build_dataset.py` makes
+datasets/v<N>/ (sft, train/valid, dpo, lessons, manifest with sha256), tagged dataset-v<N>; the trigger builds the next
+version after 25 new examples and writes jobs/v<N>.md (MLX LoRA on a local Qwen); the run waits for Marko (download, hours).
+Queen's Groq model itself is not fine-tuned. `queen training [build]` shows the state. test_training.py gates install.sh.
+
 ## 13.11.2026: Queen does everything, Claude Code teaches (MANTRA_MANIFEST modules/claude-teaches-only.md)
 Marko: "You stop doing anything physically in this computer ... Mantra, Macro, and Queen are doing everything ... You are the
 master teacher." New hands, all chat commands, all supervised (`queen pending / show / approve / reject`):

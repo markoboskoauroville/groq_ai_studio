@@ -29,7 +29,7 @@ G = Path.home() / ".groq"
 APP_REPO = Path.home() / "Developer" / "groq_ai_studio"
 DEST = Path.home() / "Developer" / "groq_ai_studio_data"
 SLUG = "markoboskoauroville/groq_ai_studio_data"
-DIRS = ["chats", "approvals", "queen_skills", "skill_cache"]
+DIRS = ["chats", "approvals", "queen_skills", "skill_cache", "training"]
 FILES = ["HANDOVER.md", "spend_ledger.json", "auto_update_ledger.json", "brain_training.json", "brain_escalations.json"]
 APP_FILES = ["TAKEOVER.md", "LESSONS.md", "momentaryupdates.md", "PROFILE.md"]
 KEY = re.compile(r"(gsk_[A-Za-z0-9]{20,}|sk-ant-[A-Za-z0-9_-]{20,}|AIza[0-9A-Za-z_-]{30,}|gh[pousr]_[A-Za-z0-9]{30,}|"
@@ -65,7 +65,7 @@ def ensure_repo():
 def _redact_tree(root):
     n = 0
     for p in root.rglob("*"):
-        if p.is_file() and p.suffix in (".json", ".md", ".txt"):
+        if p.is_file() and p.suffix in (".json", ".jsonl", ".md", ".txt"):
             t = p.read_text(encoding="utf-8", errors="replace")
             t2, k = KEY.subn("[KEY REMOVED]", t)
             if k:
@@ -112,7 +112,24 @@ def sync_now():
                 _run(["git", "commit", "-q", "-m", f"Queen's data: {n} files ({time.strftime('%d.%m.%Y %H:%M')})"], cwd=DEST)
                 code, out = _run(["git", "push", "-q", "origin", "HEAD:main"], cwd=DEST)
                 res = {"ok": code == 0, "changed": n, "push": out.strip()[-200:] if code else "pushed"}
+                # versioning: every dataset version is a git tag dataset-v<N> in the data repository
+                if code == 0:
+                    _, tags = _run(["git", "tag", "-l", "dataset-v*"], cwd=DEST)
+                    for m in sorted((data / "training" / "datasets").glob("v*/manifest.json")):
+                        tag = f"dataset-{m.parent.name}"
+                        if tag not in tags.split():
+                            _run(["git", "tag", "-a", tag, "-m", f"Queen training dataset {m.parent.name}"], cwd=DEST)
+                            _run(["git", "push", "-q", "origin", tag], cwd=DEST)
+                            res.setdefault("tagged", []).append(tag)
         res.update(repo=how, redacted=redacted, at=time.strftime("%H:%M:%S"))
+        try:   # the trigger: a new dataset version once enough new examples came in (built now, pushed next sync)
+            import build_dataset
+            b = build_dataset.maybe_build()
+            if b.get("built"):
+                res["dataset"] = f"v{b['version']}"
+                _STATE["dirty"] = True
+        except Exception as exc:
+            res["dataset_error"] = str(exc)
         _STATE["last"] = res
         print(f"[data-sync] {res}", flush=True)
         return res

@@ -76,3 +76,7 @@ A repository that holds DATA (students, personal records: mpa-academy) stays PRI
   ship mpa-academy "<message>"
   deploy mpa-academy
 Never propose making a data repository public.
+
+You are learning from your corrections (13.11.2026). Every answer you write is recorded with its turn number; every approval or
+rejection of your steps, with Claude Code's note, and every better answer Claude writes for you, go into a dataset for your
+fine-tuning (private repo groq_ai_studio_data, training/). So: answer the same way you would act, never pad, never guess.

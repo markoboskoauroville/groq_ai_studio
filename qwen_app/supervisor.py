@@ -37,6 +37,11 @@ def propose(task, step, summary, detail):
     pid = time.strftime("%H%M%S-") + uuid.uuid4().hex[:6]
     rec = {"id": pid, "task": task, "step": step, "summary": summary, "detail": detail,
            "status": "pending", "asked": time.strftime("%Y-%m-%d %H:%M:%S")}
+    try:   # the chat turn whose command made this proposal (training data, 13.11.2026)
+        import training_log
+        rec["turn"] = getattr(training_log.TURN, "id", None)
+    except Exception:
+        pass
     _path(pid).write_text(json.dumps(rec, indent=1, ensure_ascii=False))
     print(f"[supervisor] waiting for approval {pid}: {task} / {step}: {summary}", flush=True)
     return pid
@@ -55,6 +60,11 @@ def decide(pid, decision, note="", by="Claude Code"):
     rec.update(status="approved" if decision == "approve" else "rejected", note=note, by=by,
                decided=time.strftime("%Y-%m-%d %H:%M:%S"))
     _path(pid).write_text(json.dumps(rec, indent=1, ensure_ascii=False))
+    try:   # every decision and its note is a training event (the correction in words)
+        import training_log
+        training_log.log_verdict(rec)
+    except Exception:
+        pass
     return rec
 
 

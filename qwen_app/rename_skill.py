@@ -541,10 +541,17 @@ def _task(title, fn, repo=None):
     chat = TaskChat(title)
     q = _QUEUES.setdefault((repo or title).split("/")[-1].lower(), {"lock": threading.Lock(), "failed": None, "n": 0})
     q["n"] += 1
+    try:
+        import training_log  # noqa: PLC0415
+        turn = getattr(training_log.TURN, "id", None)   # the chat turn that wrote this command (training data)
+    except Exception:
+        training_log, turn = None, None
     if q["n"] > 1:
         chat.say("Queued: it starts when the task before it on this repository has finished well.")
 
     def go():
+        if training_log:
+            training_log.TURN.id = turn
         with q["lock"]:
             try:
                 if q["failed"]:

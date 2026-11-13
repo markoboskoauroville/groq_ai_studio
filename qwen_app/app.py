@@ -583,6 +583,8 @@ try:
     _register_news(app, pool, record_spend)
     from data_sync import register as _register_data_sync
     _register_data_sync(app)
+    from training_log import register as _register_training
+    _register_training(app)
 except Exception as _ps_exc:
     print(f"[poster_skill] not loaded: {_ps_exc}")
 
@@ -1044,6 +1046,14 @@ def chat():
         # 13.11.2026 (claude-teaches-only.md): her own answer is her hand. A line of her answer that is one of her chat
         # commands (open app / rename app / rename repo / install latest) is RUN, and its result is part of the answer.
         # Before this, she could only describe a step and wait for someone to type it. Changes still wait for approval.
+        try:   # training data (13.11.2026): every answer of hers is an "output" event, its commands carry the turn
+            import training_log as _tl
+            _turn = _tl.new_turn()
+            _tl.TURN.id = _turn
+            _tl.log_output(_turn, last_user_text, re.sub(r"<think>.*?</think>", "", joined_content, flags=re.S).strip(),
+                           model, output_mode)
+        except Exception as _exc:
+            print(f"[training] {_exc}", flush=True)
         try:
             from rename_skill import chat_rename_command
             ran, seen = 0, set()

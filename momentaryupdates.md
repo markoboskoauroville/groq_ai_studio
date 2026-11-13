@@ -71,3 +71,8 @@ make it max 4 sentences"
 13.11.2026, Marko (on names): "The name can be an approximation. It can be just a symbol of the name. It needs to find the best
 matching, even an abbreviation. It needs to find what is the only match. It needs to offer me the top 5 matches ... what she thinks
 makes the most sense needs to be at the top."
+
+13.11.2026, Marko: "Make mi wan prompt hir. You could prompt Claude like this: "Claude, please generate code that sets up an
+automated workflow where Qwen's output and its corrections by the Opus model are recorded in a GitHub repository. The code
+should log each Qwen output, capture Opus's correction, and prepare a dataset for periodic fine-tuning. Include steps for data
+storage, versioning, and triggering the training process.""
