@@ -53,3 +53,11 @@ Done: repo created from ~/.groq (qwen_app, groq_pool, groq_cli, launchers), TAKE
 Gemini posters EN/HR full-bleed and three stripes; account fallback; Pictures folder and .af + .png; Excel catalogue; assessment;
 Allow press by Macro Recorder; supervised web-photo with the panorama live; one chat per task; self-check; tabs; lightning
 full-screen). Open: the full-screen click not tested by a real click.
+
+13.11.2026, Marko: "please open the virtual machine in Mantra Remote and rename this repository and application to Mantra Remote
+Viewing Also, open the Queen and everything. I ask you now to do it through the Queen. Put in the standing rule for this computer:
+everything we are doing through the Queen. Everything we are doing here, we are using the Queen to teach her how to do the things.
+Now, this renaming, she needs to understand. You stop doing anything physically in this computer: moving things, renaming things.
+Mantra, Macro, and Queen are doing everything. You are just giving the tasks. You are writing the skills, and you are assessing and
+reviewing what I did and making corrections. You are the master teacher of this tool. I am telling you what to do, and you use those
+guys to test them, assess them, fix them. You always need to do corrections until they come to the level of your Opus model."
