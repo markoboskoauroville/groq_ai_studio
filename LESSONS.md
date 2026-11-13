@@ -151,3 +151,9 @@
 - The Voice Engine's phase flips between sentences ("making"): ask only while GET /speaking says playing; truth = its "sentence".
 - Cropping the band makes the negative easy; a whole-display question was tried too and also answered right.
 - Her python venv has no Quartz/PIL: the window list runs in /usr/bin/python3, resizing in sips, blank check by file size.
+
+## Two locations (13.11.2026)
+- The VM has no `rsync`: shell scripts there use `cp -p` with `-nt`. macOS `cp` has no `-u`, so the same script tests `-nt` itself.
+- A second Queen with `data_sync.py` unguarded would mirror its own empty chats over the Mac's data repo (rsync --delete): any new location needs a guard first.
+- Her Mac skills (read-screen: "display 1 = BenQ") bleed into answers on the VM: a skill true on one machine only must say so in its first line.
+- Non-interactive `ssh host cmd` has no ~/.local/bin on the PATH: put the export at the very top of ~/.bashrc (Ubuntu's returns early when not interactive).

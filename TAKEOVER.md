@@ -1,5 +1,21 @@
 # Groq AI Studio: takeover
 
+## 13.11.2026: the second location, Queen on the VM chromium-vm (MANTRA_MANIFEST modules/two-locations.md)
+Marko: "Queen must be in the virtual machine ... any lessons or skills are written in the same repository ... we are in two locations."
+- VM (`ssh ubuntu@chromium-vm`, Ubuntu aarch64): `git clone` of this repo in ~/Developer/groq_ai_studio, `./install.sh` into ~/.groq (venv, the same files),
+  **`queen.service`** (systemd --user, linger on) = `~/.groq/venv/bin/python ~/.groq/qwen_app/app.py 8765`, 127.0.0.1:8765, `QUEEN_LOCATION=vm`,
+  `QWEN_NO_BROWSER=1`, DISPLAY=:1. `queen "<q>"` (copy of the hub's tools/queen) in ~/.local/bin; PATH set at the top of ~/.bashrc so ssh finds it.
+- Key: only ~/.groq/keys.txt, copied once by scp (chmod 600, never printed or committed). Local Claude: the VM's own ~/.local/bin/claude (plan login):
+  `queen "ask claude: ..."` answers `[Queen · local · $0]`.
+- What changed for Linux: requirements.txt (Quartz only `sys_platform == "darwin"`); screen_look.py (`import`/`wmctrl`/`convert` on Linux, tested:
+  she read the VM's screen); claude_link.sessions() is empty without the hub; the identity line says where she runs (`_where_i_run`, QUEEN_LOCATION);
+  data_sync.py mirrors only when QUEEN_LOCATION is "mac" (the VM must never overwrite the Mac's data repo with its own state).
+  Mac-only hands stay Mac-only (rename/install/Star/Affinity skills would fail on the VM): a skill says "Mac only" in its first line.
+- Sync: `two_locations_sync.sh`, pull-only (`--ff-only`) of groq_ai_studio, MANTRA_MACRO, MACRO_SKILLS, MANTRA_MANIFEST every 5 min; Mac LaunchAgent
+  community.auroville.twolocationssync, VM two-locations-sync.timer. New queen_skills are copied (newer only) to ~/.groq/queen_skills; new Queen code is
+  reinstalled+restarted on the VM and only reported on the Mac. Conflicts: ~/.cache/two-locations/conflicts.log.
+- Proven: skill `queen_skills/two-locations.md` written and pushed on the VM, copied into the Mac's ~/.groq/queen_skills by the Mac sync.
+
 ## 13.11.2026: Queen reads the screen (`qwen_app/screen_look.py`, skill `queen_skills/read-screen.md`)
 Marko: "don't ask me if I see something ... teach the queen to learn to read screens and ask her if there's a subtitle on the screen."
 `POST /api/screen/look {question, display?: 1|2|"all", region?, window?}`: silent `screencapture -x` (-D / -R / -l of the biggest window of an
