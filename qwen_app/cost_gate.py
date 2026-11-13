@@ -6,7 +6,7 @@ happening anymore. ... anything which costs money, it needs to ask me and give m
     cost_gate.require(who, what, estimate_usd, items=None, job=None, provider="groq")   raises CostDenied on NO
     cost_gate.report(usd, ref, what)                                                    after the call, tells the ledger
 
-The gate is on the Mac (127.0.0.1, port from ~/.config/mantra-ports.json "costagent", fallback 8870). On the VM the
+The gate is on the Mac (127.0.0.1, port from ~/.config/mantra-ports.json "costagent", fallback 9047). On the VM the
 file ~/.config/cost-agent/url holds the Mac's Tailscale address and ~/.config/cost-agent/token the token, so the VM
 asks the Mac's box. If the gate cannot be reached the answer is NO (nothing is spent without a YES); on the Mac the
 gate is started on demand. Rule: MANTRA_MANIFEST modules/cost-agent.md.
@@ -42,9 +42,9 @@ def _base():
     url, tok = _remote()
     if url:
         return url, {"X-Cost-Token": tok}
-    port = 8870
+    port = 9047
     try:
-        port = int(json.load(open(HOME / ".config" / "mantra-ports.json")).get("costagent", {}).get("port", 8870))
+        port = int(json.load(open(HOME / ".config" / "mantra-ports.json")).get("costagent", {}).get("port", 9047))
     except Exception:
         pass
     return f"http://127.0.0.1:{port}", {}
