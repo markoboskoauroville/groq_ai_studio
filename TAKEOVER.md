@@ -1,5 +1,24 @@
 # Groq AI Studio: takeover
 
+## 13.11.2026: Queen does everything, Claude Code teaches (MANTRA_MANIFEST modules/claude-teaches-only.md)
+Marko: "You stop doing anything physically in this computer ... Mantra, Macro, and Queen are doing everything ... You are the
+master teacher." New hands, all chat commands, all supervised (`queen pending / show / approve / reject`):
+- `rename_skill.py`: `open app` / `quit app` (Star API), `rename app "<old>" to "<new>" in <REPO>` (every letter case and file-name
+  form, web addresses only by an owner/repo rename, Marko's quotes kept, version +1, push, build watched),
+  `rename repo`, `install latest <REPO> [replacing "<old>"]` (Mac zip -> /Applications + "Mantra Apps" + star rows; Android APK ->
+  every adb device, the Pixel 7 emulator started when none). Names are hints ranked by probability; close ones come back as a top 5.
+  Tasks on one repository queue in the order written; a red build or a reject stops the rest.
+- `publish_skill.py`: `make repo public <REPO>`: the three secret checks, history rewrite of personal addresses (approved), public,
+  build again. A billing message means "private repo": never sent to Marko.
+- Her own answer is her hand: a command line she writes is run, its result appended (placeholders and quoted lines skipped).
+- `news.py`: every step is a line in ~/.groq/HANDOVER.md; the news line next to the model name summarizes it (max 4 sentences:
+  now, next, done). Zoom +/- moved into the tab line next to Settings.
+- `data_sync.py`: chats, approvals, handover, skills, ledgers + TAKEOVER/LESSONS/skills mirrored every minute to the PRIVATE repo
+  markoboskoauroville/groq_ai_studio_data (local is the truth: a deleted chat is deleted there; keys replaced by [KEY REMOVED]).
+- `test_rename_skill.py`: every lesson as a test; install.sh refuses to install while one fails.
+First job done this way: VM Machine Remote Viewer -> Mantra Remote Viewing (Mac v29) and Mantra Remote VNC -> Mantra Remote Viewing
+(Android v44/v45, repo MANTRA_REMOTE_VIEWING), vm-chromium made public after the checks.
+
 
 ## THE RULE: teach Queen (Marko, 12.11.2026, enforced)
 

@@ -1,5 +1,19 @@
 # Groq AI Studio: lessons
 
+13.11.2026 (Queen's first renames, ten correction rounds; each one is now a test or a skill line)
+- Queen's chat commands only ran when typed by a person; her answers could not act. Now a command line in her answer runs.
+- She wrote placeholders (<exact name>) and they ran; she promised to "continue when the search answers" (there is no second turn).
+- She fired rename, install and repo rename at once: tasks on one repo now queue, a failure stops the rest.
+- Short names: the old app name, the install's "replacing" name: every name goes through best_name (probability, top 5 when close).
+- Exact text replace missed "MANTRA REMOTE VNC" (capitals) and "mantra-remote-vnc" (file name); then a fix made capitals mixed
+  case; then the underscore form changed a GitHub link into a repo that does not exist. Each place keeps its case; addresses move
+  only by owner/repo.
+- A Claude Code edit deleted the line that applies the rename (a plan with only a version bump): hence test_rename_skill.py
+  gating install.sh, and "a version bump alone is not a rename".
+- Once she answered with invented <tool_call> / curl blocks: her skill now opens with "you have no tools but the command lines".
+- A renamed Mac app that keeps a keychain password makes macOS ask Marko once ("wants to access key"); tell him in the plan.
+- A GitHub job "not started because recent account payments have failed" = the repo is private. Code is public (after three checks).
+
 11.11.2026
 - The app was written by an agent in nine installer versions in four hours; four of those installers re-embedded the whole app in
   a heredoc (900 to 3000 lines). Source of truth is now this repo, not an installer. Never regenerate it from an installer.

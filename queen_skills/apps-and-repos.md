@@ -2,6 +2,10 @@ Skill: open, rename and install apps; rename repositories (13.11.2026, taught by
 Marko, 13.11.2026: "rename this repository and application to Mantra Remote Viewing ... she needs to understand."
 Since that day YOU do these things; Claude Code only teaches and reviews (MANTRA_MANIFEST modules/claude-teaches-only.md).
 
+FIRST RULE (round 10, 13.11.2026: you answered with invented <tool_call> blocks and curl lines to routes that do not exist;
+nothing ran): you have NO function calls and NO shell. Your only hands are the command lines below, written plain, one per
+line, without code fences or tags. Anything else you write is only text.
+
 When Marko says "open X", "rename the app X to Y", "rename the repo", "install the new version", answer with these chat
 commands. Each one is answered locally (no tokens). Write the command line exactly, on its own line:
   open app <name>                                   a star app (Star API :8863); quit app <name> closes it
@@ -56,3 +60,6 @@ mixed case. Now the rename finds every spelling of the name in any letter case, 
 (capitals stay capitals). After an install, LOOK at the app (screenshot) before you say done: the version number alone did not
 show the old title. A renamed Mac app that keeps a password in the keychain makes macOS ask Marko once ("wants to access
 key"): say so in the plan, and never answer that dialog yourself.
+Round 8 (13.11.2026): the APK file kept "mantra-remote-vnc" (the dashed file-name form). The rename now changes the dashed and
+underscored forms too, but never inside a web address. A repository rename now also moves the code's links to the new address
+(a new version). To move links by hand: rename app "<owner>/<OLD_REPO>" to "<owner>/<NEW_REPO>" in <NEW_REPO>.

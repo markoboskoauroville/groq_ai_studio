@@ -190,12 +190,24 @@ def plan_rename(d, old, new):
                 t = m.group(0)
                 return new.upper() if t.isupper() else new.lower() if t.islower() else new
 
+            # and the file-name forms: mantra-remote-vnc / mantra_remote_vnc (round 8: the APK kept "mantra-remote-vnc")
+            ow, nw = re.findall(r"[A-Za-z0-9]+", old.lower()), re.findall(r"[A-Za-z0-9]+", new.lower())
+            slugs = [("-".join(ow), "-".join(nw)), ("_".join(ow), "_".join(nw))] if len(ow) > 1 else []
+
+            def _forms(part):
+                for a, b in slugs:
+                    part = re.sub(re.escape(a), lambda m: b.upper() if m.group(0).isupper() else b, part, flags=re.I)
+                return part
+
             def _swap(l):
-                return pat.sub(_case, l)
-            after = "".join(l if re.search(r"Marko[^\n]{0,40}[\"“]", l) else _swap(l)
-                            for l in after.splitlines(True))
-        # the version of THIS app: a Swift file that carries the old name (13.11.2026: the first try bumped the VM's
-        # router, another app in the same repository), or Android's gradle.properties
+                # web addresses change only when the old name IS an address part (owner/repo); round 8b: the name
+                # MANTRA_REMOTE_VNC matched inside github.com/.../MANTRA_REMOTE_VNC_TAILSCALE
+                if "/" in old:
+                    return pat.sub(_case, l)
+                parts = re.split(r"(https?://\S+)", l)
+                return "".join(p if p.startswith("http") else _forms(pat.sub(_case, p)) for p in parts)
+
+            after = "".join(l if re.search(r"Marko[^\n]{0,40}[\"“]", l) else _swap(l) for l in after.splitlines(True))
         if version is None and (name == "gradle.properties" or (p.suffix == ".swift" and old in before)):
             bumped, n = _bump(after, p)
             if n:
@@ -281,7 +293,9 @@ def rename_app(old, new, repo, chat):
         chat.say(f"'{old}' is what was asked; the app's real name in its code is '{real}'. I rename that.")
         old = real
     changes, version = plan_rename(d, old, new)
-    if not [r for r in changes if not r.endswith(".md")]:     # a TAKEOVER line alone is not a rename
+    # a TAKEOVER line or a version bump alone is not a rename (round 9: a plan that only bumped the version)
+    if not [r for r in changes if not r.endswith(".md") and r not in ("android/gradle.properties", "gradle.properties")
+            and not (r.endswith(".swift") and changes[r][1].replace(f"VERSION = {version}", f"VERSION = {(version or 1) - 1}") == changes[r][0])]:
         chat.say(f"'{old}' is nowhere in the code of {d.name}; nothing to rename.")
         raise SkillError(f"'{old}' not found in {repo}")
     diff = _diff(changes)
@@ -329,7 +343,13 @@ def rename_repo(old, new, chat):
     code, out = _run(["gh", "repo", "view", f"{owner}/{new}", "--json", "name,url", "-q", ".url"])
     _, remote = _run(["git", "remote", "get-url", "origin"], cwd=d)
     chat.say(f"GitHub: {out.strip()} ({'found' if code == 0 else 'NOT found'}). Local {d.name} origin: {remote.strip()}."
-             " The folder keeps its name. Task finished.")
+             " The folder keeps its name.")
+    old_name = old.split("/")[-1]
+    _, refs = _run(["git", "grep", "-l", "-F", f"{owner}/{old_name}"], cwd=d)
+    if refs.strip():   # links in the code (the update button) point at the new address, in a new version
+        chat.say(f"The code still links to {owner}/{old_name} in: {', '.join(refs.split())}. Renaming those links.")
+        return rename_app(f"{owner}/{old_name}", f"{owner}/{new}", f"{owner}/{new}", chat)
+    chat.say("Task finished.")
     return {"repo": f"{owner}/{new}", "url": out.strip(), "local": str(d), "verified": code == 0}
 
 
@@ -416,7 +436,10 @@ def install_latest(repo, chat, replacing=None):
         for dev in devices:
             code, out = _run([ADB, "-s", dev, "install", "-r", str(tmp / asset)], timeout=300)
             done[dev] = "Success" in out
-        pkg = "com.mantra.remote"
+        # the package from the APK itself (round 9: it was fixed to com.mantra.remote, wrong for any other app)
+        tools = sorted((Path.home() / "Library/Android/sdk/build-tools").glob("*/aapt2"))
+        _, pk = _run([str(tools[-1]), "dump", "packagename", str(tmp / asset)]) if tools else (1, "")
+        pkg = pk.strip().splitlines()[-1] if pk.strip() else "com.mantra.remote"
         for dev in [d for d, ok in done.items() if ok]:
             _, v = _run([ADB, "-s", dev, "shell", "dumpsys", "package", pkg])
             m = re.search(r"versionName=(\S+)", v)

@@ -4,6 +4,8 @@
 set -euo pipefail
 SRC="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 G="${HOME}/.groq"
+# Queen's lessons as tests (13.11.2026): no install while one fails
+python3 "${SRC}/qwen_app/test_rename_skill.py" >/dev/null || { echo "test_rename_skill.py FAILED: not installed" >&2; exit 1; }
 mkdir -p "${G}/qwen_app"
 [[ -x "${G}/venv/bin/python" ]] || python3 -m venv "${G}/venv"
 "${G}/venv/bin/python" -m pip install --quiet --upgrade pip
