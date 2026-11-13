@@ -17,7 +17,7 @@ source URL, author and license in the sheet.
 import argparse, csv, hashlib, io, json, os, re, subprocess, sys, time, urllib.parse, urllib.request
 from pathlib import Path
 
-UA = "QueenImageCollect/1.0 (research collection; contact via repository)"
+UA = "QueenImageCollect/1.0 (https://github.com/markoboskoauroville/groq_ai_studio; private photo research) python-urllib"
 ROOT = Path.home() / ".groq" / "work" / "image_collect"
 QUEEN = "http://127.0.0.1:8765"
 MIN_LONG = 1600
@@ -71,9 +71,16 @@ _WM = threading.Semaphore(2)          # Wikimedia answers 429 to more than a cou
 
 def http(url, data=None, headers=None, timeout=40, tries=4):
     if "wikimedia.org" in url:
-        with _WM:
-            time.sleep(0.4)
-            return _http(url, data, headers, timeout, tries)
+        for i in range(3):                     # never sleep inside the semaphore
+            with _WM:
+                time.sleep(0.5)
+                try:
+                    return _http(url, data, headers, timeout, 1)
+                except RuntimeError as e:
+                    if "429" not in str(e):
+                        raise
+            time.sleep(20 * (i + 1))
+        raise RuntimeError(url[:100] + ": HTTP 429 (Wikimedia throttle)")
     return _http(url, data, headers, timeout, tries)
 
 
@@ -229,11 +236,11 @@ def gen_bing(job_dir):
     """Bing Images HTML (no login): each tile carries a JSON with murl (full-size file), purl (page), t (title)."""
     import html as _html
     seen = set()
-    for q in BING_QUERIES:
+    for q, q_size in [(q, sz) for sz in ("+filterui:imagesize-wallpaper", "+filterui:imagesize-extralarge") for q in BING_QUERIES]:
         for first in range(0, 35 * 8, 35):
             try:
                 body = http("https://www.bing.com/images/async?" + urllib.parse.urlencode(
-                    {"q": q, "first": first, "count": 35, "qft": "+filterui:imagesize-large", "adlt": "off"}),
+                    {"q": q, "first": first, "count": 35, "qft": q_size, "adlt": "off"}),
                     headers={"Accept-Language": "en"}, timeout=30, tries=2).decode("utf8", "ignore")
             except Exception as e:
                 log(job_dir, f"bing stop {q} first={first}: {str(e)[:80]}")
