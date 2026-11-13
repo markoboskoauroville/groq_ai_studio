@@ -16,6 +16,7 @@ if anything key-shaped is still there. Keys stay in ~/.groq (keys.txt, .env, api
     GET  /api/data-sync          the last result
     POST /api/data-sync          sync now
 """
+import os
 import re
 import shutil
 import subprocess
@@ -77,6 +78,10 @@ def _redact_tree(root):
 def sync_now():
     with _STATE["lock"]:
         _STATE["dirty"] = False
+        if os.environ.get("QUEEN_LOCATION", "mac") != "mac":
+            # two locations (13.11.2026): the mirror is "local is the truth" (rsync --delete) and belongs to the Mac. A second
+            # Queen (the VM) shares the skills and lessons through the app repo on main, and must never overwrite the Mac's data.
+            return {"ok": True, "skipped": f"data mirror belongs to the Mac (QUEEN_LOCATION={os.environ['QUEEN_LOCATION']})"}
         how = ensure_repo()
         _run(["git", "pull", "-q", "--rebase", "origin", "main"], cwd=DEST)
         data = DEST / "data"
