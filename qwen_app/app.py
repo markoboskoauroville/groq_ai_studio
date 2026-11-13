@@ -261,7 +261,7 @@ def build_queen_system_prompt(user_persona: str = "") -> str:
     """
     base = (
         f"You are Queen (`qwen`), the AI assistant powering Marko's local Groq AI Studio "
-        f"(currently running version {VERSION} on macOS at http://127.0.0.1:8765).\n"
+        f"(currently running version {VERSION} {_where_i_run()} at http://127.0.0.1:8765).\n"
         f"Your local source repository is `~/Developer/groq_ai_studio` (installed to `~/.groq`), "
         f"and your two core source files are `qwen_app/app.py` (Python/Flask backend) and "
         f"`qwen_app/index.html` (web UI).\n\n"
@@ -375,6 +375,15 @@ def build_queen_system_prompt(user_persona: str = "") -> str:
 # in which order, what to check. Every skill is read into this prompt on every turn, so a new file is a new skill
 # with no code change. Work that needs code gets a route and, when useful, a chat command too.
 QUEEN_SKILLS_DIR = Path(__file__).resolve().parent.parent / "queen_skills"
+
+
+def _where_i_run() -> str:
+    """Two locations (13.11.2026): the Mac, and the Oracle VM chromium-vm (Linux, X11 display :1, Macro Recorder for Linux)."""
+    if os.environ.get("QUEEN_LOCATION", "mac") == "mac":
+        return "on macOS"
+    return ("on the LINUX VM chromium-vm (Oracle cloud, Ubuntu aarch64, X11 display :1; NOT the Mac: no Mac apps, no AppKit, no "
+            "osascript, no screencapture; Macro Recorder is the Linux build, same `macro do/run/has`; your skills and lessons are "
+            "shared with the Mac's Queen through the GitHub repos on main)")
 
 
 def _queen_skills_block() -> str:

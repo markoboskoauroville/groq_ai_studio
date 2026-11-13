@@ -121,6 +121,8 @@ def _hub(*args, timeout=30):
 
 
 def sessions():
+    if not (HUB_TOOLS / "other_sessions.py").exists():   # the VM has no hub (two locations, 13.11.2026): no live-session list
+        return []
     code, out, err = _hub("json")
     if code != 0:
         raise RuntimeError(f"other_sessions.py json failed: {err.strip()[:200]}")
