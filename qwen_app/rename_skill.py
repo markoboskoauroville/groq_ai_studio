@@ -519,12 +519,56 @@ def deploy(repo, chat):
     return {"repo": d.name, "deployed": True, "live": urls[-1] if urls else None}
 
 
+PHONES = {"pixel": "100.70.23.53:5555", "nothing": "100.67.149.40:5555"}
+ENGINE = "community.auroville.voiceengine"
+
+
+def say_on_phone(phone, text):
+    """Marko, 13.11.2026: "I don't want silent notification. I want voice engine. I have it here. If I don't have it, look at
+    Nothing phone and copy the engine here." Only TEXT travels (MANTRA_MANIFEST voice-text-only.md): the phone's own Voice
+    Engine speaks it with Speechify (POST /say on 8720). A phone without the engine gets it copied from the Nothing first."""
+    phone = best_name(phone, list(PHONES))
+    dev = PHONES[phone]
+    _run([ADB, "connect", dev], timeout=20)
+    _, pk = _run([ADB, "-s", dev, "shell", "pm", "path", ENGINE], timeout=20)
+    copied = ""
+    if "package:" not in pk:                                   # copy the engine from the Nothing
+        src = PHONES["nothing"]
+        _run([ADB, "connect", src], timeout=20)
+        _, sp = _run([ADB, "-s", src, "shell", "pm", "path", ENGINE], timeout=20)
+        paths = [l.split(":", 1)[1].strip() for l in sp.splitlines() if l.startswith("package:")]
+        if not paths:
+            raise SkillError("the Voice Engine is on neither phone")
+        tmp = Path(tempfile.mkdtemp(prefix="queen-engine-"))
+        local = []
+        for i, p in enumerate(paths):
+            _run([ADB, "-s", src, "pull", p, str(tmp / f"{i}.apk")], timeout=120)
+            local.append(str(tmp / f"{i}.apk"))
+        code, out = _run([ADB, "-s", dev, "install-multiple", "-r", *local], timeout=300)
+        shutil.rmtree(tmp, ignore_errors=True)
+        if "Success" not in out:
+            raise SkillError(f"copying the engine failed: {out[-200:]}")
+        _run([ADB, "-s", dev, "shell", "monkey", "-p", ENGINE, "-c", "android.intent.category.LAUNCHER", "1"])
+        time.sleep(4)
+        copied = " (the Voice Engine was copied from the Nothing first)"
+    port = "18720" if phone == "pixel" else "18721"
+    _run([ADB, "-s", dev, "forward", f"tcp:{port}", "tcp:8720"])
+    req = urllib.request.Request(f"http://127.0.0.1:{port}/say", data=json.dumps({"text": text}).encode(),
+                                 headers={"Content-Type": "application/json"})
+    with urllib.request.urlopen(req, timeout=30) as r:
+        d = json.load(r)
+    if not d.get("ok"):
+        raise SkillError(f"the phone's engine said: {d}")
+    return f"Spoken on the {phone} by its Voice Engine ({d.get('voice')}, subtitles {d.get('subtitles')}){copied}."
+
+
 # ---------- chat ----------
 
 _OPEN = re.compile(r"^\s*(open|quit)\s+app\s+(?P<name>.+?)\s*$", re.I)
 _RENAME_APP = re.compile(r'^\s*rename\s+app\s+"(?P<old>[^"]+)"\s+to\s+"(?P<new>[^"]+)"\s+in\s+(?P<repo>[\w./-]+)\s*$', re.I)
 _RENAME_REPO = re.compile(r"^\s*rename\s+repo\s+(?P<old>[\w./-]+)\s+to\s+(?P<new>[\w.-]+)\s*$", re.I)
 _SHIP = re.compile(r'^\s*ship\s+(?P<repo>[\w./-]+)\s+"(?P<msg>[^"]+)"\s*$', re.I)
+_SAY = re.compile(r'^\s*say\s+on\s+(?P<phone>\w+)\s+"(?P<text>[^"]+)"\s*$', re.I)
 _DEPLOY = re.compile(r"^\s*deploy\s+(?P<repo>[\w./-]+)\s*$", re.I)
 _INSTALL = re.compile(r'^\s*install\s+latest\s+(?P<repo>[\w./-]+)(\s+replacing\s+"(?P<old>[^"]+)")?\s*$', re.I)
 
@@ -577,7 +621,7 @@ def _task(title, fn, repo=None):
 
 def chat_rename_command(text):
     t = (text or "").strip()
-    if re.match(r"^(open|quit|rename|install|make|ship|deploy)\s", t, re.I) and re.search(r"<[^>]*>", t):
+    if re.match(r"^(open|quit|rename|install|make|ship|deploy|say)\s", t, re.I) and re.search(r"<[^>]*>", t):
         return ("Not run: the command still has a placeholder in angle brackets. Write the real name (a hint is enough: "
                 "the skill finds the exact name itself).")
     m = _OPEN.match(t)
@@ -597,6 +641,12 @@ def chat_rename_command(text):
     if m:
         old, new = m.group("old"), m.group("new")
         return _task(f"Rename repo {old.split('/')[-1]} -> {new}", lambda c: rename_repo(old, new, c), old)
+    m = _SAY.match(t)
+    if m:
+        try:
+            return say_on_phone(m.group("phone"), m.group("text"))
+        except Exception as exc:
+            return f"Not spoken: {exc}"
     m = _DEPLOY.match(t)
     if m:
         repo = m.group("repo")
