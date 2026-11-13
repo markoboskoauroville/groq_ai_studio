@@ -238,6 +238,8 @@ TN_PLACES = ["Chennai", "Madurai", "Coimbatore", "Tiruchirappalli Trichy", "Sale
              "Tamil Nadu village", "Tamil Nadu temple", "Tamil Nadu street", "Tamil Nadu home"]
 TN_PHRASES = ["Vinayagar Chaturthi celebration", "Ganesh Chaturthi devotees pray", "Vinayagar idol procession", "Vinayagar idol immersion", "Pillaiyar temple worship", "Vinayagar pooja"]
 BING_QUERIES += [f"{ph} {pl}" for pl in TN_PLACES for ph in TN_PHRASES]
+STRICT_TITLE = True
+BING_SIZES = ("+filterui:imagesize-custom_1600_1000", "+filterui:imagesize-custom_2400_1500")
 GANESH_TITLE = re.compile(r"ganesh|ganesa|ganapati|ganpati|vinayag|vinayak|pillai?yar|pillayar|chaturthi|chathurthi|vinayaka", re.I)
 
 
@@ -245,7 +247,7 @@ def gen_bing(job_dir):
     """Bing Images HTML (no login): each tile carries a JSON with murl (full-size file), purl (page), t (title)."""
     import html as _html
     seen = set()
-    for q, q_size in [(q, sz) for sz in ("+filterui:imagesize-custom_1600_1000", "+filterui:imagesize-custom_2400_1500") for q in BING_QUERIES]:
+    for q, q_size in [(q, sz) for sz in BING_SIZES for q in BING_QUERIES]:
         for first in range(0, 35 * 8, 35):
             try:
                 body = http("https://www.bing.com/images/async?" + urllib.parse.urlencode(
@@ -266,7 +268,7 @@ def gen_bing(job_dir):
                 if not u or u in seen or not re.search(r"\.(jpe?g|png|webp)(\?|$)", u, re.I):
                     continue
                 seen.add(u)
-                if not GANESH_TITLE.search((m.get("t") or "") + " " + (m.get("purl") or "") + " " + u):
+                if STRICT_TITLE and not GANESH_TITLE.search((m.get("t") or "") + " " + (m.get("purl") or "") + " " + u):
                     continue               # title says nothing about Ganesha: skip without downloading
                 txt = " ".join([m.get("t") or "", m.get("purl") or "", q])
                 yield {"id": "b:" + hashlib.md5(u.encode()).hexdigest()[:16], "src": "Web/Bing: " + urllib.parse.urlparse(m.get("purl") or u).netloc,
@@ -516,6 +518,191 @@ def status(a):
                       "accepted_by_source": src, "rejected_by_reason": rs.most_common(12)}, indent=1))
 
 
+# ---------------------------------------------------------------- GRAB mode: zero cost, no vision (Marko, 13.11.2026)
+GRAB_TERMS = ["Ganesha worship Tamil Nadu", "Vinayagar temple pooja Tamil Nadu", "Vinayaka Chaturthi Tamil Nadu procession", "Pillaiyar kovil village",
+              "Ganesh home altar Tamil Nadu kolam", "Vinayagar Chaturthi Chennai devotees", "Ganesha immersion Tamil Nadu sea", "Vinayagar roadside temple Tamil Nadu",
+              "Ganesha pooja Tamil village", "Ganesh Chaturthi Madurai Coimbatore Trichy celebration", "Pillayarpatti Karpaga Vinayagar devotees", "Vinayagar idol street pandal Tamil Nadu"]
+
+
+def cdp_connect(url):
+    import websocket
+    return websocket.create_connection(url, timeout=60, suppress_origin=True)
+
+
+class CDP:
+    def __init__(self, ws):
+        self.ws, self.n = ws, 0
+
+    def call(self, method, params=None):
+        self.n += 1
+        self.ws.send(json.dumps({"id": self.n, "method": method, "params": params or {}}))
+        while True:
+            m = json.loads(self.ws.recv())
+            if m.get("id") == self.n:
+                return m.get("result", {})
+
+
+def gen_google(job_dir):
+    """Google Images in the VM's Chrome (one new tab, no login): real mouse-wheel scrolling by CDP Input events, then the result JSON is read from the page."""
+    try:
+        ver = jget("http://[::1]:9222/json/version")
+        br = CDP(cdp_connect(ver["webSocketDebuggerUrl"].replace("127.0.0.1", "[::1]").replace("localhost", "[::1]")))
+        tid = br.call("Target.createTarget", {"url": "about:blank"})["targetId"]
+        pg = CDP(cdp_connect(f"ws://[::1]:9222/devtools/page/{tid}"))
+    except Exception as e:
+        log(job_dir, f"google: Chrome not reachable ({str(e)[:100]})")
+        return
+    seen = set()
+    queries = GRAB_TERMS + [f"{ph} {pl}" for pl in TN_PLACES for ph in TN_PHRASES[:3]]
+    try:
+        for q in queries:
+            pg.call("Page.navigate", {"url": "https://www.google.com/search?" + urllib.parse.urlencode({"tbm": "isch", "q": q, "hl": "en", "tbs": "isz:l"})})
+            time.sleep(4)
+            url = pg.call("Runtime.evaluate", {"expression": "location.href"}).get("result", {}).get("value", "")
+            if "consent" in url:
+                pg.call("Runtime.evaluate", {"expression": "[...document.querySelectorAll('button')].find(b=>/reject all|accept all/i.test(b.innerText))?.click()"})
+                time.sleep(3)
+            for i in range(14):                     # real wheel events, like a thumb on the page
+                pg.call("Input.dispatchMouseEvent", {"type": "mouseWheel", "x": 600, "y": 500, "deltaX": 0, "deltaY": 1800})
+                time.sleep(1.1)
+                if i % 5 == 4:
+                    pg.call("Runtime.evaluate", {"expression": "[...document.querySelectorAll('input[type=button],div[role=button]')].find(b=>/show more results/i.test(b.value||b.innerText))?.click()"})
+            html = pg.call("Runtime.evaluate", {"expression": "document.documentElement.innerHTML", "returnByValue": True}).get("result", {}).get("value", "")
+            if "unusual traffic" in html or "/sorry/" in url:
+                log(job_dir, "google: asks for a captcha, stopping Google (no bypass)")
+                return
+            n = 0
+            for u, a, b in re.findall(r'\["(https?://[^"\\]+?)",(\d+),(\d+)\]', html):
+                u = u.replace("\\u003d", "=").replace("\\u0026", "&")
+                if re.search(r"gstatic\.com|google\.com|googleusercontent\.com/.*=s\d+-?c?$|youtube\.com/vi", u) or u in seen:
+                    continue
+                w, h = int(b), int(a)
+                if max(w, h) < 200:
+                    continue
+                seen.add(u)
+                n += 1
+                yield {"id": "g:" + hashlib.md5(u.encode()).hexdigest()[:16], "src": "Google Images", "term": q, "title": q, "w": w, "h": h, "orig": u,
+                       "thumb": None, "page": "", "author": "", "license": "", "license_url": "", "desc": "", "cats": [], "meta_tn": False}
+            log(job_dir, f"google done: {q} ({n} results)")
+    finally:
+        try:
+            br.call("Target.closeTarget", {"targetId": tid})
+        except Exception:
+            pass
+
+
+def grab(a):
+    """Download every shown result, filtered only by free local tests: opens as an image, long side >= a.min_px, not a duplicate. No vision, no Queen."""
+    import threading
+    from concurrent.futures import ThreadPoolExecutor, wait, FIRST_COMPLETED
+    global STRICT_TITLE, BING_SIZES
+    STRICT_TITLE = False
+    BING_SIZES = ("+filterui:imagesize-custom_1000_700",)
+    BING_QUERIES[:0] = GRAB_TERMS
+    job_dir = ROOT / a.job
+    (job_dir / "originals").mkdir(parents=True, exist_ok=True)
+    cf = job_dir / "cands.json"
+    cands = json.loads(cf.read_text()) if cf.exists() else {}
+    Image = load_pil()
+    Image.MAX_IMAGE_PIXELS = 400_000_000
+    lock = threading.Lock()
+    spent0 = sum(v.get("cost", 0) for v in cands.values())
+    hashes = {k: v["hash"] for k, v in cands.items() if v.get("accepted") and v.get("hash")}
+    seqc = [0]
+    for i, (k, v) in enumerate(sorted((k, v) for k, v in cands.items() if v.get("accepted"))):
+        v["seq"] = -1000 + i
+        v["term"] = v.get("term") or "(first 26: judged by Queen earlier)"
+    log(job_dir, f"GRAB start: {len(hashes)} kept from before, Groq spend so far ${spent0:.2f} (no vision in this mode)")
+
+    def count():
+        return sum(1 for v in cands.values() if v.get("accepted"))
+
+    def save():
+        with lock:
+            cf.write_text(json.dumps(cands, indent=1))
+
+    def one(c, rec):
+        try:
+            body = http(c["orig"], timeout=40, tries=1)
+            if len(body) > 60_000_000:
+                raise RuntimeError("over 60 MB")
+            im = Image.open(io.BytesIO(body)); im.load()
+            rec["w"], rec["h"] = im.size
+            if max(im.size) < a.min_px:
+                rec["reason"] = f"too small ({im.size[0]}x{im.size[1]})"; return
+            h = dhash(im.convert("RGB"))
+            with lock:
+                if any(hamming(h, o) <= 10 for o in hashes.values()):
+                    rec["reason"] = "duplicate (perceptual hash)"; return
+                hashes[c["id"]] = h
+            u = c["orig"].lower().split("?")[0]
+            ext = ".jpg" if u.endswith((".jpg", ".jpeg")) else ".png" if u.endswith(".png") else ".webp" if u.endswith(".webp") else (".png" if im.format == "PNG" else ".webp" if im.format == "WEBP" else ".jpg")
+            of = job_dir / "originals" / (hashlib.md5(c["id"].encode()).hexdigest() + ext)
+            of.write_bytes(body)
+            rec.update(hash=h, file=of.name, size=list(im.size), sha=hashlib.sha256(body).hexdigest(), accepted=True, verdict="grab", reason="ok")
+        except Exception as e:
+            rec["reason"] = str(e)[:120]
+        finally:
+            log(job_dir, f"{c['id']} {rec.get('reason')} total={count()}")
+
+    def old_leftovers():
+        for k, v in list(cands.items()):
+            if not v.get("accepted") and max(v.get("w", 0), v.get("h", 0)) >= a.min_px and v.get("orig") and "term" not in v:
+                yield {**v, "_old": True}
+
+    gens = [gen_google(job_dir), gen_bing(job_dir), old_leftovers()]
+    ex = ThreadPoolExecutor(max_workers=a.workers)
+    pending, n = set(), 0
+    for c in roundrobin(*gens):
+        if count() >= a.target + 12:
+            break
+        old = c.get("_old")
+        if c["id"] in cands and not old:
+            continue
+        if old:
+            rec = cands[c["id"]]
+        else:
+            rec = dict(c); cands[c["id"]] = rec
+        rec["seq"] = seqc[0] = seqc[0] + 1
+        rec.setdefault("term", c.get("term") or c.get("title") or "")
+        pending.add(ex.submit(one, c, rec))
+        n += 1
+        if n % 10 == 0:
+            save()
+        while len(pending) >= a.workers * 2:
+            _, pending = wait(pending, return_when=FIRST_COMPLETED)
+    wait(pending); ex.shutdown(); save()
+    log(job_dir, f"GRAB finished: {count()} kept, Groq spend still ${sum(v.get('cost', 0) for v in cands.values()):.2f}")
+
+
+def publish_grab(a):
+    job_dir = ROOT / a.job
+    cands = json.loads((job_dir / "cands.json").read_text())
+    pick = sorted([v for v in cands.values() if v.get("accepted")], key=lambda v: v.get("seq", 10**9))[:a.target]
+    pdir = job_dir / "publish"
+    if pdir.exists():
+        for f in pdir.iterdir():
+            f.unlink()
+    pdir.mkdir(exist_ok=True)
+    rows = []
+    for i, v in enumerate(pick, 1):
+        src = job_dir / "originals" / v["file"]
+        name = f"{i:03d}_{slug(v.get('term') or v['title'])}{src.suffix}"
+        os.link(src, pdir / name)
+        rows.append([f"{i:03d}", name, v.get("term", ""), v.get("page") or v["orig"], v["orig"], f"{v['size'][0]}x{v['size'][1]}", v["src"]])
+    with open(pdir / "000_sheet.csv", "w", newline="") as f:
+        w = csv.writer(f)
+        w.writerow(["number", "file", "search term", "source page", "file URL", "pixels", "source"])
+        w.writerows(rows)
+    print(f"{len(pick)} files prepared")
+    if len(pick) < a.target and not a.force:
+        print("fewer than target; add --force to upload anyway"); sys.exit(2)
+    subprocess.run(["rclone", "mkdir", f"gdrive:{a.folder}"], check=True)
+    subprocess.run(["rclone", "copy", str(pdir), f"gdrive:{a.folder}", "--transfers", "4", "--stats-one-line", "-v"], check=True)
+    out = subprocess.run(["rclone", "lsf", f"gdrive:{a.folder}"], capture_output=True, text=True).stdout.split()
+    print(f"uploaded; Drive folder holds {len(out)} files (incl. sheet)")
+
+
 def sheet(a):
     """Contact sheet of accepted photos (random sample) for Claude's eyes: sheet --job J --n 20 --out /tmp/sheet.jpg ; prints numbered captions."""
     import random
@@ -585,7 +772,7 @@ def publish(a):
 
 if __name__ == "__main__":
     ap = argparse.ArgumentParser()
-    ap.add_argument("cmd", choices=["run", "status", "publish", "sheet"])
+    ap.add_argument("cmd", choices=["run", "status", "publish", "sheet", "grab", "publish-grab"])
     ap.add_argument("--job", default="ganesha-tn")
     ap.add_argument("--target", type=int, default=222)
     ap.add_argument("--spare", type=int, default=30, help="extra accepted photos kept as replacements")
@@ -593,9 +780,10 @@ if __name__ == "__main__":
     ap.add_argument("--workers", type=int, default=8)
     ap.add_argument("--per-author", type=int, default=8)
     ap.add_argument("--folder", default="Ganesha worship Tamil Nadu (222) 13.11.2026")
+    ap.add_argument("--min-px", type=int, default=1000)
     ap.add_argument("--n", type=int, default=20)
     ap.add_argument("--seed", type=int, default=1)
     ap.add_argument("--out", default="/tmp/sheet.jpg")
     ap.add_argument("--force", action="store_true")
     a = ap.parse_args()
-    {"run": run, "status": status, "publish": publish, "sheet": sheet}[a.cmd](a)
+    {"run": run, "status": status, "publish": publish, "sheet": sheet, "grab": grab, "publish-grab": publish_grab}[a.cmd](a)
