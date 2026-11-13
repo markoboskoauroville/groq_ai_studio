@@ -258,6 +258,13 @@ reason (one short sentence).
 """
 
 
+CONFIRM_Q = """Second look, strict. Point at ONE person in this picture who is clearly doing an act of worship or festival devotion towards a Ganesha image:
+folded hands in prayer, placing an offering (flowers, coconut, fruit, sweets), lighting a lamp or camphor, performing puja/aarti, circumambulating, touching the idol in reverence,
+carrying the idol in a devotional procession or immersing it, or drawing kolam for the festival. Standing next to the idol, looking at it, posing for the camera,
+walking on a beach, or making/selling idols is NOT worship.
+Answer ONE JSON object: {"person_visible": true/false, "who": "short description of that person", "act": "one of folded_hands, offering, lamp, puja, circumambulation, touching_idol, procession, immersion, kolam, none"}"""
+
+
 def decide(j, c):
     if not isinstance(j, dict):
         return False, "no judgement"
@@ -339,6 +346,13 @@ def run(a):
             rec["judge"] = d.get("json")
             rec["reason"] = why
             rec["verdict"] = "accept?" if ok else "reject"
+            if ok:
+                d2 = ask_queen(jp, CONFIRM_Q)
+                rec["cost"] += d2.get("cost", 0); spent += d2.get("cost", 0)
+                j2 = d2.get("json") or {}
+                rec["confirm"] = j2
+                if str(j2.get("act", "none")).lower() in ("none", "") or not j2.get("person_visible"):
+                    ok = False; rec["reason"] = "second look: no clear act of worship"; rec["verdict"] = "reject"
             if ok:
                 # download the ORIGINAL and check it properly
                 ext = {"image/jpeg": ".jpg", "image/png": ".png", "image/webp": ".webp"}.get(
