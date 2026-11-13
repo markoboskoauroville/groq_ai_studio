@@ -359,8 +359,10 @@ def rename_repo(old, new, chat):
 
 def install_latest(repo, chat, replacing=None):
     import supervisor  # noqa: PLC0415
-    d = repo_dir(repo)
-    slug = _slug(d)
+    try:
+        slug = _slug(repo_dir(repo))
+    except SkillError:   # round 11 (13.11.2026): installing needs only the release, not a clone (TTT has none here)
+        slug = repo if "/" in repo else f"markoboskoauroville/{repo}"
     _, info = _run(["gh", "release", "view", "-R", slug, "--json", "tagName,assets"])
     rel = json.loads(info)
     assets = [a["name"] for a in rel["assets"]]
