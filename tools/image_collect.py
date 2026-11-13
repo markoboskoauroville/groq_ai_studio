@@ -510,6 +510,29 @@ def status(a):
                       "accepted_by_source": src, "rejected_by_reason": rs.most_common(12)}, indent=1))
 
 
+def sheet(a):
+    """Contact sheet of accepted photos (random sample) for Claude's eyes: sheet --job J --n 20 --out /tmp/sheet.jpg ; prints numbered captions."""
+    import random
+    from PIL import ImageDraw
+    Image = load_pil()
+    J = ROOT / a.job
+    d = json.loads((J / "cands.json").read_text())
+    acc = [v for v in d.values() if v.get("accepted")]
+    random.Random(a.seed).shuffle(acc)
+    acc = acc[:a.n]
+    cols = 5
+    rows = (len(acc) + cols - 1) // cols
+    sh = Image.new("RGB", (cols * 320, rows * 340), "white")
+    for i, v in enumerate(acc):
+        im = Image.open(J / "judge" / (hashlib.md5(v["id"].encode()).hexdigest() + ".jpg"))
+        im.thumbnail((310, 300))
+        sh.paste(im, ((i % cols) * 320, (i // cols) * 340))
+        ImageDraw.Draw(sh).text(((i % cols) * 320 + 4, (i // cols) * 340 + 310), f"{i+1} {v['src'][:20]} {v['size'][0]}px", fill="black")
+        j = v.get("judge") or {}
+        print(i + 1, v["id"], "|", j.get("description"), "|", (v.get("confirm") or {}).get("act"), "|", j.get("place_guess"))
+    sh.save(a.out, quality=80)
+
+
 def slug(s):
     s = re.sub(r"[^a-z0-9]+", "-", s.lower()).strip("-")
     return "-".join(s.split("-")[:7])[:50] or "photo"
@@ -556,7 +579,7 @@ def publish(a):
 
 if __name__ == "__main__":
     ap = argparse.ArgumentParser()
-    ap.add_argument("cmd", choices=["run", "status", "publish"])
+    ap.add_argument("cmd", choices=["run", "status", "publish", "sheet"])
     ap.add_argument("--job", default="ganesha-tn")
     ap.add_argument("--target", type=int, default=222)
     ap.add_argument("--spare", type=int, default=30, help="extra accepted photos kept as replacements")
@@ -564,6 +587,9 @@ if __name__ == "__main__":
     ap.add_argument("--workers", type=int, default=8)
     ap.add_argument("--per-author", type=int, default=8)
     ap.add_argument("--folder", default="Ganesha worship Tamil Nadu (222) 13.11.2026")
+    ap.add_argument("--n", type=int, default=20)
+    ap.add_argument("--seed", type=int, default=1)
+    ap.add_argument("--out", default="/tmp/sheet.jpg")
     ap.add_argument("--force", action="store_true")
     a = ap.parse_args()
-    {"run": run, "status": status, "publish": publish}[a.cmd](a)
+    {"run": run, "status": status, "publish": publish, "sheet": sheet}[a.cmd](a)
