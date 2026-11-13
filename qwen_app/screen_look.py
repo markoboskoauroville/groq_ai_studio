@@ -8,7 +8,9 @@ Silent capture (screencapture -x, nothing comes to the front, no mouse or key), 
 Returns {ok, answer, path, captured_at, target, size, blank}. A blank or black capture is a capture failure: no answer is
 asked of her (she would invent one). Display 1 = BenQ (2560x1440 points), display 2 = MacBook.
 """
+import os
 import subprocess
+import sys
 import time
 from pathlib import Path
 
@@ -30,7 +32,19 @@ SUBTITLE_DEF = (
     "orange centred text, answer exactly: no subtitle on screen. QUESTION: ")
 
 
+LINUX = sys.platform.startswith("linux")   # the VM (13.11.2026, two locations): X11 on display :1, ImageMagick instead of screencapture/sips
+
+
 def _windows():
+    if LINUX:
+        out = subprocess.run(["wmctrl", "-lG"], capture_output=True, text=True, timeout=15,
+                             env={**os.environ, "DISPLAY": os.environ.get("DISPLAY", ":1")}).stdout
+        res = []
+        for ln in out.splitlines():
+            p = ln.split(None, 8)
+            if len(p) >= 9:
+                res.append({"id": int(p[0], 16), "owner": p[8], "name": p[8], "layer": 0, "area": int(p[6]) * int(p[7])})
+        return res
     code = ("import Quartz,json;print(json.dumps([{'id':w['kCGWindowNumber'],'owner':w.get('kCGWindowOwnerName',''),"
             "'name':w.get('kCGWindowName','') or '','layer':w['kCGWindowLayer'],'area':w['kCGWindowBounds']['Width']*w['kCGWindowBounds']['Height']}"
             "for w in Quartz.CGWindowListCopyWindowInfo(Quartz.kCGWindowListOptionOnScreenOnly,0)]))")
@@ -39,10 +53,35 @@ def _windows():
     return json.loads(r.stdout or "[]")
 
 
+def _capture_linux(data, raw):
+    env = {**os.environ, "DISPLAY": os.environ.get("DISPLAY", ":1")}
+    cmd = ["import", "-silent"]
+    target = "display :1"
+    if data.get("window"):
+        want = str(data["window"]).lower()
+        cands = [w for w in _windows() if want in w["owner"].lower() and w["area"] > 10000]
+        if not cands:
+            raise ValueError(f"no on-screen window matching '{data['window']}'")
+        w = max(cands, key=lambda c: c["area"])
+        cmd += ["-window", hex(w["id"])]
+        target = f"window {w['owner']}"
+    else:
+        cmd += ["-window", "root"]
+        if data.get("region"):
+            x, y, w, h = [int(v) for v in data["region"]]
+            cmd += ["-crop", f"{w}x{h}+{x}+{y}", "+repage"]
+            target = f"region {x},{y},{w},{h}"
+    cmd.append(str(raw))
+    subprocess.run(cmd, check=True, timeout=30, env=env)
+    return raw, target
+
+
 def capture(data):
     WORK.mkdir(parents=True, exist_ok=True)
     stamp = time.strftime("%Y%m%d_%H%M%S")
     raw = WORK / f"screen_{stamp}_raw.png"
+    if LINUX:
+        return _capture_linux(data, raw)
     cmd = ["/usr/sbin/screencapture", "-x"]
     target = "display 1"
     if data.get("window"):
@@ -75,7 +114,10 @@ def look(data, pool, record_spend):
     when = time.strftime("%H:%M:%S")
     out_path = raw.with_name(raw.name.replace("_raw", ""))
     edge = int(data.get("max_edge") or 1800)
-    subprocess.run(["/usr/bin/sips", "-Z", str(edge), str(raw), "--out", str(out_path)], capture_output=True, timeout=20)
+    if LINUX:
+        subprocess.run(["convert", str(raw), "-resize", f"{edge}x{edge}>", str(out_path)], capture_output=True, timeout=30)
+    else:
+        subprocess.run(["/usr/bin/sips", "-Z", str(edge), str(raw), "--out", str(out_path)], capture_output=True, timeout=20)
     raw.unlink(missing_ok=True)
     size = out_path.stat().st_size if out_path.exists() else 0
     res = {"path": str(out_path), "captured_at": when, "target": target, "size": size}
