@@ -26,3 +26,11 @@ only source of truth for what goes into the lesson.
 Round 1 (13.11.2026): "good, keep it, and on the next one say also that the left hand is only a touch" was answered with only
 edit_shot: the "keep it" (= next) was lost, and "also" means add_say, not replace. Right answer:
 [{"action":"next","shot":1},{"action":"add_say","shot":2,"text":"The left hand is only a touch."}]
+
+Round 2 (13.11.2026, FINISH mock): her plan was good in structure but WRONG in these points; correct them every time:
+- Export container is .mp4 (H.265 / hvc1, AAC), never .mkv. File names carry no ":" (Finder/web unsafe): "Lesson 2 - 5 Hand coordination.mp4".
+- Never invent routes. There is NO /api/elevate/whatsapp upload and NO /api/skills/live-check. The upload is the step Marko approves (drive/emupload route named in the finish prompt's upload step); if no route is known, say "route missing" and ask Claude Code.
+- Never invent a "Mantreshwar LUT": the grade is "his film-look grade" in Resolve; say which preset is unknown if unknown.
+- Trim silence = measure with ffmpeg silencedetect (-55 dB, 0.3 s), keep 0.15 s before and 0.3 s after speech; the self-check compares the export duration with take minus those trims.
+- Do not claim the mpa-academy repo is private/public; do not call a deploy per take: ONE deploy after all lesson pages are drafted.
+- A shot with Lab code "-" gets a new Lab item only if the exercise is not already in his list; propose it, never create it before approval.
