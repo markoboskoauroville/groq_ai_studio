@@ -232,6 +232,15 @@ BING_QUERIES = [
 ]
 
 
+TN_PLACES = ["Chennai", "Madurai", "Coimbatore", "Tiruchirappalli Trichy", "Salem", "Tirunelveli", "Thanjavur", "Vellore", "Erode", "Tiruppur",
+             "Kanyakumari", "Rameswaram", "Kumbakonam", "Dindigul", "Karur", "Nagercoil", "Thoothukudi", "Kanchipuram", "Cuddalore", "Pudukkottai",
+             "Sivaganga Karaikudi", "Namakkal", "Hosur", "Tiruvannamalai", "Ooty Nilgiris", "Mylapore", "Pillayarpatti", "Pondicherry", "Theni", "Virudhunagar Sivakasi",
+             "Tamil Nadu village", "Tamil Nadu temple", "Tamil Nadu street", "Tamil Nadu home"]
+TN_PHRASES = ["Vinayagar Chaturthi celebration", "Ganesh Chaturthi devotees pray", "Vinayagar idol procession", "Vinayagar idol immersion", "Pillaiyar temple worship", "Vinayagar pooja"]
+BING_QUERIES += [f"{ph} {pl}" for pl in TN_PLACES for ph in TN_PHRASES]
+GANESH_TITLE = re.compile(r"ganesh|ganesa|ganapati|ganpati|vinayag|vinayak|pillai?yar|pillayar|chaturthi|chathurthi|vinayaka", re.I)
+
+
 def gen_bing(job_dir):
     """Bing Images HTML (no login): each tile carries a JSON with murl (full-size file), purl (page), t (title)."""
     import html as _html
@@ -257,6 +266,8 @@ def gen_bing(job_dir):
                 if not u or u in seen or not re.search(r"\.(jpe?g|png|webp)(\?|$)", u, re.I):
                     continue
                 seen.add(u)
+                if not GANESH_TITLE.search((m.get("t") or "") + " " + (m.get("purl") or "") + " " + u):
+                    continue               # title says nothing about Ganesha: skip without downloading
                 txt = " ".join([m.get("t") or "", m.get("purl") or "", q])
                 yield {"id": "b:" + hashlib.md5(u.encode()).hexdigest()[:16], "src": "Web/Bing: " + urllib.parse.urlparse(m.get("purl") or u).netloc,
                        "title": _html.unescape(m.get("t") or "")[:150], "w": 0, "h": 0, "orig": u, "thumb": None,
