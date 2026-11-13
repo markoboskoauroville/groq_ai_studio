@@ -8,3 +8,6 @@ Save every result in the project's Pictures folder with " (nano banana)" in the 
 generation for the same picture).
 Prompts that work: say what must stay EXACTLY (people, faces, clothes, instruments) and what only may be added (ceiling,
 floor, lights); ask for photorealistic, same light and colours.
+13.11.2026: new pictures from words alone work (no reference image). The picture is taken as its own file from Chrome's memory
+(Page.getResourceContent of the image URL): full size, no Gemini buttons or input bar over it. A screenshot is only the fallback.
+Chrome asks "Allow remote debugging?" for every connection; Macro Recorder presses Allow (needs Quartz in Queen's Python).

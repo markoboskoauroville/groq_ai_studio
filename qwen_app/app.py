@@ -585,6 +585,8 @@ try:
     _register_data_sync(app)
     from training_log import register as _register_training
     _register_training(app)
+    import book_skill as _book_skill
+    _book_skill.setup(pool, record_spend)
 except Exception as _ps_exc:
     print(f"[poster_skill] not loaded: {_ps_exc}")
 

@@ -20,6 +20,7 @@ Chrome must have remote debugging on (chrome://inspect/#remote-debugging; the po
     POST /api/gemini/image {prompt, image: path, out: path, account?}  -> {ok, out, width, height}
 """
 import base64
+import subprocess
 import json
 import os
 import time
@@ -140,10 +141,12 @@ def _context_of_account(cdp):
 
 
 def make_image(prompt, image_path, out_path, account=ACCOUNT, wait=180, max_accounts=4):
-    """Try the accounts in order; an exhausted one hands over to the next profile."""
-    image_path = Path(image_path).expanduser()
-    if not image_path.is_file():
-        raise GeminiError(f"no image {image_path}")
+    """Try the accounts in order; an exhausted one hands over to the next profile.
+    image_path None = a new picture from the words alone (13.11.2026, the book's pencil sketches)."""
+    if image_path:
+        image_path = Path(image_path).expanduser()
+        if not image_path.is_file():
+            raise GeminiError(f"no image {image_path}")
     tried = []
     for email, pdir in profiles(account)[:max_accounts]:
         try:
@@ -275,8 +278,9 @@ def _make_with(prompt, image_path, out_path, account, pdir, wait=180):
             if account.lower() not in who.lower():
                 raise Exhausted(f"could not reach Gemini as {account} (got {who!r})")
 
-        # 1. the reference, through Gemini's own upload
-        _attach(cdp, sess, image_path)
+        # 1. the reference, through Gemini's own upload (none for a picture made from words alone)
+        if image_path:
+            _attach(cdp, sess, image_path)
 
         # 2. the prompt, typed, then sent
         cdp.js(sess, "document.querySelector('rich-textarea .ql-editor').focus()")
@@ -312,14 +316,53 @@ def _make_with(prompt, image_path, out_path, account, pdir, wait=180):
         if not found:
             raise Exhausted(f"no image from Gemini in {wait}s")
 
-        # 4. the screenshot of the picture, at its real size
+        # 4a. the picture's own bytes from Chrome's memory (no overlays, full size): Page.getResourceContent of its URL
+        out = Path(out_path).expanduser()
+        out.parent.mkdir(parents=True, exist_ok=True)
+        try:
+            src = cdp.js(sess, "(() => { const im=[...document.querySelectorAll('model-response img, generated-image img, single-image img')]"
+                               ".filter(i=>i.naturalWidth>400); return im[im.length-1].currentSrc; })()")
+            frame = cdp.send("Page.getFrameTree", {}, sess)["frameTree"]["frame"]["id"]
+            res = cdp.send("Page.getResourceContent", {"frameId": frame, "url": src}, sess, timeout=60)
+            data = base64.b64decode(res["content"]) if res.get("base64Encoded") else res["content"].encode("latin-1")
+            if len(data) > 20000:
+                out.write_bytes(data)
+                return {"out": str(out), "width": found["nw"], "height": found["nh"], "natural": [found["nw"], found["nh"]],
+                        "account": account, "profile": pdir, "how": "resource"}
+        except Exception as exc:
+            print(f"[gemini] resource copy failed, screenshot instead: {exc}", flush=True)
+        # Gemini's buttons and its input bar lie over the picture: hidden for the screenshot
+        cdp.js(sess, "(() => { const st=document.createElement('style'); st.textContent='input-container, .input-area-container,"
+                     " fieldset, .bottom-container, .generated-image-controls, .image-actions, button{visibility:hidden !important}';"
+                     " document.head.appendChild(st); })()")
+        # 4b. the screenshot of the picture, at its real size
+        # 13.11.2026: captureBeyondViewport re-laid Gemini's page and the clip caught the dark page beside the picture.
+        # Now: the picture centred in view, measured again right before the shot, captured from the visible viewport.
+        cdp.js(sess, "(() => { const im=[...document.querySelectorAll('model-response img, generated-image img, single-image img')]"
+                     ".filter(i=>i.naturalWidth>400); im[im.length-1].scrollIntoView({block:'center', inline:'center'}); })()")
+        time.sleep(1.2)
+        found.update(cdp.js(sess, "(() => { const im=[...document.querySelectorAll('model-response img, generated-image img, single-image img')]"
+                                  ".filter(i=>i.naturalWidth>400); const r=im[im.length-1].getBoundingClientRect();"
+                                  " return {x:r.x,y:r.y,w:r.width,h:r.height}; })()"))
         scale = max(1.0, found["nw"] / max(1, found["w"]))
-        shot = cdp.send("Page.captureScreenshot", {"format": "png", "captureBeyondViewport": True,
-                                                   "clip": {"x": found["x"], "y": found["y"], "width": found["w"],
-                                                            "height": found["h"], "scale": scale}}, sess, timeout=90)
+        # the clip's own "scale" moved the frame off the picture (13.11.2026, seen in a full-view capture); instead the page
+        # is rendered sharper (deviceScaleFactor, same CSS layout, same size) and the clip is taken at scale 1
+        vw = cdp.js(sess, "[innerWidth, innerHeight]")
+        cdp.send("Emulation.setDeviceMetricsOverride", {"width": vw[0], "height": vw[1], "deviceScaleFactor": scale,
+                                                        "mobile": False}, sess)
+        time.sleep(0.8)
+        try:   # Gemini's page ignores the clip's position (it always came from 0,0): the whole view, cut out below
+            shot = cdp.send("Page.captureScreenshot", {"format": "png", "captureBeyondViewport": False}, sess, timeout=90)
+        finally:
+            cdp.send("Emulation.clearDeviceMetricsOverride", {}, sess)
         out = Path(out_path).expanduser()
         out.parent.mkdir(parents=True, exist_ok=True)
         out.write_bytes(base64.b64decode(shot["data"]))
+        # the picture, cut out of the view on the Mac (sips): its CSS box times the render scale, 2 px inside the edge
+        x, y = round((found["x"] + 2) * scale), round((found["y"] + 2) * scale)
+        w, h = round((found["w"] - 4) * scale), round((found["h"] - 4) * scale)
+        subprocess.run(["sips", "-c", str(h), str(w), "--cropOffset", str(y), str(x), str(out), "--out", str(out)],
+                       capture_output=True, check=False)
         return {"out": str(out), "width": round(found["w"] * scale), "height": round(found["h"] * scale),
                 "natural": [found["nw"], found["nh"]], "account": account, "profile": pdir}
     finally:

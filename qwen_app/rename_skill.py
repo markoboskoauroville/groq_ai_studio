@@ -621,7 +621,7 @@ def _task(title, fn, repo=None):
 
 def chat_rename_command(text):
     t = (text or "").strip()
-    if re.match(r"^(open|quit|rename|install|make|ship|deploy|say)\s", t, re.I) and re.search(r"<[^>]*>", t):
+    if re.match(r"^(open|quit|rename|install|make|ship|deploy|say|book)\s", t, re.I) and re.search(r"<[^>]*>", t):
         return ("Not run: the command still has a placeholder in angle brackets. Write the real name (a hint is enough: "
                 "the skill finds the exact name itself).")
     m = _OPEN.match(t)
@@ -660,4 +660,8 @@ def chat_rename_command(text):
         repo, old = m.group("repo"), m.group("old")
         return _task(f"Install latest {repo.split('/')[-1]}", lambda c: install_latest(repo, c, old), repo)
     from publish_skill import chat_publish_command  # noqa: PLC0415
-    return chat_publish_command(t)
+    r = chat_publish_command(t)
+    if r:
+        return r
+    from book_skill import chat_book_command  # noqa: PLC0415
+    return chat_book_command(t)

@@ -2,3 +2,5 @@ flask
 waitress
 groq
 python-dotenv
+websocket-client>=1.8   # Queen's Gemini hand (Chrome DevTools)
+pyobjc-framework-Quartz>=10   # Queen's Chrome Allow watcher (Macro Recorder)

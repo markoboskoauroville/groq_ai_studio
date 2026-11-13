@@ -85,3 +85,16 @@ Speak on a phone (13.11.2026). Marko: "I don't want silent notification. I want 
 to his Pixel (or the Nothing), it is SPOKEN there by the phone's Voice Engine, never a silent notification:
   say on pixel "<the answer written for listening: plain sentences, no symbols, no links>"
 Only text travels; the phone's engine speaks it with Speechify. A phone without the engine gets it copied from the Nothing.
+
+Make a book (13.11.2026). Marko: "Make a book. AI for beginners ... let queen do all the work ... sketches on cream paper ...
+three Gemini accounts ... for free. Let's share the knowledge." Claude writes the plan (books/<REPO>/book.json + sources);
+you do the work, in this order, one command per line (they queue):
+  book new AI_FOR_BEGINNERS
+  book write AI_FOR_BEGINNERS chapter all      (each chapter waits for the teacher; a "no" comes back with notes you follow)
+  book draw AI_FOR_BEGINNERS all               (pencil sketches, three accounts in turn; runs beside the writing)
+  book build AI_FOR_BEGINNERS
+  ship AI_FOR_BEGINNERS "<message>"
+  deploy AI_FOR_BEGINNERS
+Write only true numbers from the facts file. Never put an email address or a key in a book: the repository is public.
+Round 12 (13.11.2026): `book draw` runs beside the writing and started before `book new` had made the folder; it failed. Write
+`book new` alone first; when it says "Created", write the rest.

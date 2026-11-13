@@ -84,3 +84,11 @@ me: 1. A JSONL dataset format for instruction, Qwen answer, corrected answer, an
 TRL SFTTrainer and PEFT QLoRA. 3. A script to upload the dataset and trained adapter to Hugging Face Hub. 4. A simple evaluation
 plan to compare the original Qwen and fine-tuned Qwen. 5. Clear instructions for GPU memory, batch size, learning rate, and how
 often to retrain. Assume I am a beginner and explain each step simply."
+
+13.11.2026, Marko: "Voice engine cannot speak for some reason. It's not important. What is important for me that you make
+another repository. Make a book. AI for beginners. And based on my case now training the queen and everything which I pasted
+last, make a book explaining and make drawings, sketches on cream paper with a pencil and let queen do all the work. I need that
+book to be in my style of design. It needs to have Cloudflare page. It should be called like the name of the book. .pages.dev.
+And it needs to be illustrated by three Gemini accounts. I have 21 profiles. 21. Remember, 21 or 22. I'm not sure. On my Chrome
+browser. And you can check them out. We generate the whole book for free. Let's do it for free. Let's share the knowledge.
+Let's empower the people of the world."
