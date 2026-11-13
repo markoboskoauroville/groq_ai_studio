@@ -199,6 +199,64 @@ def gen_openverse(job_dir):
         log(job_dir, f"openverse done: {q}")
 
 
+BING_QUERIES = [
+    'Ganesh Chaturthi Tamil Nadu devotees praying', 'Vinayagar Chaturthi celebration Tamil Nadu', 'Vinayagar Chaturthi Chennai idol procession',
+    'Vinayagar idol immersion Chennai Marina beach', 'Pillaiyar temple Tamil Nadu devotees worship', 'Ganesha roadside shrine Tamil Nadu villagers pooja',
+    'Vinayagar Chaturthi pooja at home Tamil family', 'Vinayagar Chaturthi kolam house front Tamil Nadu', 'Pillayarpatti Karpaga Vinayagar devotees',
+    'Uchi Pillayar temple Trichy devotees', 'Ganesh Chaturthi Madurai celebration', 'Ganesh Chaturthi Coimbatore celebration procession',
+    'Vinayagar Chaturthi village Tamil Nadu', 'Ganesha visarjan Tamil Nadu', 'Vinayagar temple abhishekam devotees Tamil Nadu',
+    'Ganesh Chaturthi Tamil Nadu photo', 'Vinayagar Chaturthi street pandal Tamil Nadu', 'Tamil women pray Ganesha idol', 'Tamil Nadu village Vinayagar festival',
+    'Vinayagar Chaturthi Tirunelveli', 'Vinayagar Chaturthi Salem', 'Vinayagar Chaturthi Tiruppur', 'Vinayagar Chaturthi Thanjavur', 'Vinayagar Chaturthi Vellore',
+    'Ganesh Chaturthi Kanyakumari', 'Ganesha puja Tamil Nadu home altar', 'Vinayagar Chaturthi kozhukattai offering pooja', 'Ganesh Chaturthi Mylapore Chennai',
+    'Ganesh Chaturthi Pondicherry Manakula Vinayagar devotees', 'Vinayagar Chaturthi Erode', 'Ganesha festival Tamil Nadu news photo',
+    'Vinayagar procession Tamil Nadu police bandobast', 'Tamil Nadu Ganesha idols immersion sea devotees',
+]
+
+
+def gen_bing(job_dir):
+    """Bing Images HTML (no login): each tile carries a JSON with murl (full-size file), purl (page), t (title)."""
+    import html as _html
+    seen = set()
+    for q in BING_QUERIES:
+        for first in range(0, 35 * 8, 35):
+            try:
+                body = http("https://www.bing.com/images/async?" + urllib.parse.urlencode(
+                    {"q": q, "first": first, "count": 35, "qft": "+filterui:imagesize-large", "adlt": "off"}),
+                    headers={"Accept-Language": "en"}, timeout=30, tries=2).decode("utf8", "ignore")
+            except Exception as e:
+                log(job_dir, f"bing stop {q} first={first}: {str(e)[:80]}")
+                break
+            tiles = re.findall(r' m="(\{.*?\})"', body)
+            if not tiles:
+                break
+            for t in tiles:
+                try:
+                    m = json.loads(_html.unescape(t))
+                except Exception:
+                    continue
+                u = m.get("murl")
+                if not u or u in seen or not re.search(r"\.(jpe?g|png|webp)(\?|$)", u, re.I):
+                    continue
+                seen.add(u)
+                txt = " ".join([m.get("t") or "", m.get("purl") or "", q])
+                yield {"id": "b:" + hashlib.md5(u.encode()).hexdigest()[:16], "src": "Web/Bing: " + urllib.parse.urlparse(m.get("purl") or u).netloc,
+                       "title": _html.unescape(m.get("t") or "")[:150], "w": 0, "h": 0, "orig": u, "thumb": None,
+                       "page": m.get("purl") or "", "author": "", "license": "", "license_url": "", "desc": "", "cats": [],
+                       "meta_tn": bool(TN_WORDS.search(_html.unescape(m.get("t") or "") + " " + (m.get("purl") or "")))}
+            time.sleep(1.2)
+        log(job_dir, f"bing done: {q}")
+
+
+def roundrobin(*gens):
+    gens = list(gens)
+    while gens:
+        for g in list(gens):
+            try:
+                yield next(g)
+            except StopIteration:
+                gens.remove(g)
+
+
 # ---------------------------------------------------------------- image checks
 def load_pil():
     from PIL import Image
@@ -312,8 +370,7 @@ def run(a):
         return sum(1 for v in cands.values() if v.get("accepted"))
 
     def gens():
-        yield from gen_commons(job_dir)
-        yield from gen_openverse(job_dir)
+        yield from roundrobin(gen_commons(job_dir), gen_openverse(job_dir), gen_bing(job_dir))
 
     for c in gens():
         if accepted() >= a.target + a.spare:
@@ -327,9 +384,19 @@ def run(a):
         cands[c["id"]] = rec
         try:
             jp = job_dir / "judge" / (hashlib.md5(c["id"].encode()).hexdigest() + ".jpg")
-            raw = http(c["thumb"], timeout=60)
+            full_bytes = None
+            raw = http(c["thumb"], timeout=60) if c["thumb"] else None
+            if raw is None:                      # web result: the file itself is the only copy we have
+                raw = full_bytes = http(c["orig"], timeout=90, tries=2)
+                if len(raw) > 60_000_000:
+                    raise RuntimeError("file over 60 MB")
             im = Image.open(io.BytesIO(raw))
             im.load()
+            if full_bytes is not None:
+                c["w"], c["h"] = rec["w"], rec["h"] = im.size
+                if max(im.size) < MIN_LONG:
+                    rec["verdict"] = "reject"; rec["reason"] = f"too small ({im.size[0]}x{im.size[1]})"
+                    continue
             rgb = im.convert("RGB")
             h = dhash(rgb)
             if any(hamming(h, o) <= 10 for o in hashes.values()):
@@ -359,7 +426,7 @@ def run(a):
                     "image/jpeg" if c["orig"].lower().endswith((".jpg", ".jpeg")) else
                     "image/png" if c["orig"].lower().endswith(".png") else "image/webp", ".jpg")
                 of = job_dir / "originals" / (hashlib.md5(c["id"].encode()).hexdigest() + ext)
-                body = http(c["orig"], timeout=180)
+                body = full_bytes if full_bytes is not None else http(c["orig"], timeout=180)
                 of.write_bytes(body)
                 full = Image.open(of); full.load()
                 if max(full.size) < MIN_LONG:
@@ -429,10 +496,10 @@ def publish(a):
         os.link(src, pdir / name)
         j = v.get("judge") or {}
         rows.append([f"{i:03d}", name, j.get("description", ""), j.get("place_guess", ""), j.get("setting", ""),
-                     f"{v['size'][0]}x{v['size'][1]}", v["page"], v["orig"], v["author"], v["license"], v["license_url"], v["src"]])
+                     f"{v['size'][0]}x{v['size'][1]}", v["page"], v["orig"], v["author"], v["src"]])
     with open(pdir / "000_sheet.csv", "w", newline="") as f:
         w = csv.writer(f)
-        w.writerow(["number", "file name", "what it shows", "place if known", "setting", "pixels", "source page", "file URL", "author", "license", "license URL", "source"])
+        w.writerow(["number", "file name", "what it shows", "place if known", "setting", "pixels", "source page", "file URL", "author (if known)", "source"])
         w.writerows(rows)
     subprocess.run(["rclone", "mkdir", f"gdrive:{a.folder}"], check=True)
     subprocess.run(["rclone", "copy", str(pdir), f"gdrive:{a.folder}", "--transfers", "4", "-v", "--stats-one-line"], check=True)
