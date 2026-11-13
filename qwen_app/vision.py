@@ -21,6 +21,8 @@ from pathlib import Path
 
 from flask import jsonify, request
 
+import cost_gate
+
 VISION_MODEL = "qwen/qwen3.6-27b"
 MAX_BYTES = 4_000_000          # Groq's base64 image limit is about 4 MB
 
@@ -54,6 +56,10 @@ def _image_bytes(data):
 
 def ask(data, pool, record_spend):
     from groq import Groq  # noqa: PLC0415
+    import cost_gate  # noqa: PLC0415  (13.11.2026: every paid call asks the Cost Agent first)
+    n = int(data.get("job_items") or 0) or None
+    cost_gate.require(data.get("who") or "queen-vision", f"recognize {n or 'some'} images with Groq vision",
+                      cost_gate.VISION_IMAGE_USD * (n or 1), items=n, job=data.get("job"), unit="image recognitions")
     question = (data.get("question") or "").strip() or "Describe this picture."
     raw, mime = _image_bytes(data)
     if len(raw) > MAX_BYTES:
@@ -104,6 +110,8 @@ def register(app, pool, record_spend):
             return jsonify(ok=True, **ask(data, pool, record_spend))
         except VisionError as exc:
             return jsonify(ok=False, error=str(exc)), 400
+        except cost_gate.CostDenied as exc:
+            return jsonify(ok=False, error=str(exc), denied=True), 402
         except Exception as exc:
             return jsonify(ok=False, error=f"{type(exc).__name__}: {exc}"), 500
     return app

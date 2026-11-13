@@ -518,6 +518,11 @@ def record_spend(model, prompt_tokens, completion_tokens, req_id=""):
     except Exception:
         pass
 
+    try:
+        import cost_gate  # noqa: PLC0415
+        cost_gate.report(cost_info["total_cost"], req_id, model)
+    except Exception:
+        pass
     return cost_info, ledger
 
 app = Flask(__name__)

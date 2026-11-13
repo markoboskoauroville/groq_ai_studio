@@ -86,6 +86,11 @@ def summarize(messages, pool, record_spend):
     prompt = ("HANDOVER (every step, newest last):\n" + ("\n".join(steps) or "none") + "\n\nWAITING NOW:\n"
               + ("\n".join(facts) or "none") + "\n\nLAST CHAT LINES:\n" + "\n".join(talk))
     last = None
+    import cost_gate  # noqa: PLC0415
+    try:
+        cost_gate.require("queen-news", "the Queen news line", cost_gate.CHAT_CALL_USD)
+    except cost_gate.CostDenied as exc:
+        return f"(the Cost Agent has not allowed the news line: {exc})"
     for key in pool.candidates(MODEL):
         try:
             r = Groq(api_key=key, max_retries=0).chat.completions.create(

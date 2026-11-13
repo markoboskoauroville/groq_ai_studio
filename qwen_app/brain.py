@@ -180,6 +180,11 @@ def brain_plan():
     except Exception as exc:                                        # pragma: no cover
         return jsonify(error=f"brain cannot reach the key pool: {exc}"), 503
 
+    try:
+        import cost_gate  # noqa: PLC0415
+        cost_gate.require("queen-brain", "plan a macro chain with Groq", cost_gate.CHAT_CALL_USD)
+    except cost_gate.CostDenied as exc:
+        return jsonify(error=str(exc), denied=True), 402
     candidates = pool.candidates(model)
     if not candidates:
         return jsonify(error="every key is cooling down"), 503

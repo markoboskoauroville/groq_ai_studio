@@ -67,6 +67,8 @@ def _book_dir(repo):
 def _complete(system, user):
     from groq import Groq  # noqa: PLC0415
     pool, last = _CTX["pool"], None
+    import cost_gate  # noqa: PLC0415
+    cost_gate.require("queen-book", "book chapter text with Groq", 0.01)
     for key in pool.candidates(MODEL):
         try:
             # the reasoning stays hidden (13.11.2026: an unclosed <think> leaked 2,900 words of thinking into chapter 1)

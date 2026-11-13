@@ -97,7 +97,7 @@ def _http(url, data=None, headers=None, timeout=40, tries=4):
             last = e
             if e.code in (429, 503):
                 time.sleep(10 * (i + 1))
-            elif e.code in (400, 403, 404):
+            elif e.code in (400, 402, 403, 404):
                 break
             else:
                 time.sleep(3)
@@ -317,9 +317,20 @@ def sharpness(img):
     return float(lap.var())
 
 
+COST_JOB = None      # set by run(): the Cost Agent asks Marko once for this job and its budget (13.11.2026)
+COST_ITEMS = None
+
+
 def ask_queen(path, question):
-    body = json.dumps({"path": str(path), "question": question, "json": True, "max_tokens": 1200}).encode()
-    d = json.loads(http(QUEEN + "/api/vision/ask", data=body, headers={"Content-Type": "application/json"}, timeout=120, tries=3))
+    body = json.dumps({"path": str(path), "question": question, "json": True, "max_tokens": 1200, "who": "image-collect",
+                       "job": COST_JOB, "job_items": COST_ITEMS}).encode()
+    try:
+        d = json.loads(http(QUEEN + "/api/vision/ask", data=body, headers={"Content-Type": "application/json"}, timeout=200, tries=3))
+    except RuntimeError as e:
+        if "HTTP Error 402" in str(e):          # the Cost Agent said NO (or was not reached): the job stops, nothing is spent
+            print("Cost Agent: NO. The job stops here; nothing more is spent.", flush=True)
+            os._exit(3)
+        raise
     return d
 
 
@@ -391,6 +402,8 @@ def decide(j, c):
 def run(a):
     import threading
     from concurrent.futures import ThreadPoolExecutor, wait, FIRST_COMPLETED
+    global COST_JOB, COST_ITEMS
+    COST_JOB, COST_ITEMS = "image-collect:" + a.job, int(a.budget)
     job_dir = ROOT / a.job
     for sub in ("originals", "judge"):
         (job_dir / sub).mkdir(parents=True, exist_ok=True)
