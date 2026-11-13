@@ -22,3 +22,8 @@ after rewording single_photograph false) for plain single photographs of a beach
 reliable for "is this one picture or several". So that test is no longer yours: the script decides collage/screenshot/poster by file title, description, categories and aspect
 ratio (> 2.6). You still judge real_photo, watermark, Ganesha visible, worship, place. Never invent structure ("a vertical stack of frames") that you cannot point at;
 describe only what you see in `look`.
+Lesson 2 (13.11.2026, Claude's contact sheet of the first 20 accepted, 16 good): you let through posed actors in a decorated living room (a TV-news photo), a picture with a news-channel/police logo
+burnt in, an empty shrine with a tiny person far off, and costumed children mimicking deities. The judge now also asks `staged_or_ai_look` and `channel_logo_overlay`
+(true = reject) and the second look says an empty shrine with a tiny far person is not worship. A candid real moment beats a perfect-looking one: if the light and faces look
+too perfect, say staged.
+Yield measured (first 1100 judged): about 2.5 accepted per 100 judged from Commons + Openverse + Bing; most rejects are too small (<1600 px), no people, no Ganesha. Plan on ~$4 per 25 accepted.

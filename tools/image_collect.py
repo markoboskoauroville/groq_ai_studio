@@ -332,6 +332,8 @@ look (two plain sentences: what exactly is in the picture and what the people ar
 real_photo (true for an ordinary real camera photograph; false only for AI-generated pictures, illustrations, paintings, 3D renders),
 single_photograph (true when it is ONE ordinary photograph, one frame; false ONLY if it is clearly several pictures joined side by side or in a grid,
 a screenshot with phone/browser interface, or a poster with large text boards. A normal wide or tall photo of a crowd is single_photograph = true),
+staged_or_ai_look (true when it looks like posed actors, an advertisement/studio shot, a stock-style staged family, or an AI-rendered scene with too-perfect skin and light; false for a candid real moment),
+channel_logo_overlay (true when a TV/news channel logo, corporate or police emblem, text banner or caption bar is burnt into the picture),
 clean_of_watermark (true when there is no large watermark, stock-agency overlay or logo across the picture; false only if there is one),
 ganesha_visible (a Ganesha image/idol/shrine is clearly in the picture),
 people_count (number of people clearly visible, integer),
@@ -348,7 +350,7 @@ reason (one short sentence).
 
 CONFIRM_Q = """Second look, strict. Point at ONE person in this picture who is clearly doing an act of worship or festival devotion towards a Ganesha image:
 folded hands in prayer, placing an offering (flowers, coconut, fruit, sweets), lighting a lamp or camphor, performing puja/aarti, circumambulating, touching the idol in reverence,
-carrying the idol in a devotional procession or immersing it, or drawing kolam for the festival. Standing next to the idol, looking at it, posing for the camera,
+carrying the idol in a devotional procession or immersing it, or drawing kolam for the festival. An empty shrine with a tiny person far away does not count. Standing next to the idol, looking at it, posing for the camera,
 walking on a beach, or making/selling idols is NOT worship.
 Answer ONE JSON object: {"person_visible": true/false, "who": "short description of that person", "act": "one of folded_hands, offering, lamp, puja, circumambulation, touching_idol, procession, immersion, kolam, none"}"""
 
@@ -358,6 +360,10 @@ def decide(j, c):
         return False, "no judgement"
     if not j.get("real_photo"):
         return False, "not a real photo (AI/illustration)"
+    if j.get("staged_or_ai_look") is True:
+        return False, "staged / AI-looking"
+    if j.get("channel_logo_overlay") is True:
+        return False, "logo / banner burnt in"
     if j.get("clean_of_watermark") is False:
         return False, "watermark / stock preview"
     # Queen's single_photograph answer is NOT used: she called plain single photos "vertical stacks of frames" (lesson 1).
