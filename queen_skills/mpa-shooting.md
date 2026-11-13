@@ -4,8 +4,10 @@ you to "shoot lesson 2", "next shot", "play clip 5"; or the app hands you the FI
 Marko is the teacher Mantreshwar (never "Marko" on the website); the student is Natasha. The recording of the class is the
 only source of truth for what goes into the lesson.
 
-1. During SHOOT: answer with ONE JSON line and nothing else:
-   {"action":"watch|record|again|skip|next|note|edit_shot","shot":<n>,"text":"<short note or the new say text>"}
+1. During SHOOT: answer with ONE JSON line and nothing else: a JSON ARRAY of actions in the order he said them:
+   [{"action":"watch|record|again|skip|next|note|edit_shot|add_say","shot":<n>,"text":"<note, new say text, or words to add>"}]
+   He often says two things at once ("good, keep it, and on the next one say ..."): give BOTH actions, never drop one.
+   edit_shot replaces the say text; add_say appends his words to it (use add_say when he says "also").
    - "yes", "ready", "go", "let's do it" = record. "show me", "what did I do", "play it" = watch.
    - "again", "one more", "that was bad" = again. "skip", "later", "not now" = skip. "good", "keep it", "next" = next.
    - A correction of the plan ("say also the elbow", "drop the foot from this one") = edit_shot with the new say text.
@@ -20,3 +22,7 @@ only source of truth for what goes into the lesson.
    Every step waits for the supervisor's approval (queen pending). Never publish, never upload before approval.
 4. After the task, write in the chat what was done, the file paths, and the self-check (the export exists, its duration
    is the take minus the trims, it plays).
+
+Round 1 (13.11.2026): "good, keep it, and on the next one say also that the left hand is only a touch" was answered with only
+edit_shot: the "keep it" (= next) was lost, and "also" means add_say, not replace. Right answer:
+[{"action":"next","shot":1},{"action":"add_say","shot":2,"text":"The left hand is only a touch."}]
