@@ -562,7 +562,11 @@ def gen_google(job_dir):
     seen = set()
     queries = GRAB_TERMS + [f"{ph} {pl}" for pl in TN_PLACES for ph in TN_PHRASES[:3]]
     try:
+        logtxt = (job_dir / "log.txt").read_text() if (job_dir / "log.txt").exists() else ""
+        done_q = set(re.findall(r"google done: (.*?) \(\d+ results\)", logtxt))
         for q in queries:
+            if q in done_q:
+                continue
             pg.call("Page.navigate", {"url": "https://www.google.com/search?" + urllib.parse.urlencode({"tbm": "isch", "q": q, "hl": "en", "tbs": "isz:l"})})
             time.sleep(4)
             url = pg.call("Runtime.evaluate", {"expression": "location.href"}).get("result", {}).get("value", "")
