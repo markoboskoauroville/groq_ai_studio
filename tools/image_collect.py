@@ -245,7 +245,7 @@ def gen_bing(job_dir):
     """Bing Images HTML (no login): each tile carries a JSON with murl (full-size file), purl (page), t (title)."""
     import html as _html
     seen = set()
-    for q, q_size in [(q, sz) for sz in ("+filterui:imagesize-wallpaper", "+filterui:imagesize-extralarge") for q in BING_QUERIES]:
+    for q, q_size in [(q, sz) for sz in ("+filterui:imagesize-custom_1600_1000", "+filterui:imagesize-custom_2400_1500") for q in BING_QUERIES]:
         for first in range(0, 35 * 8, 35):
             try:
                 body = http("https://www.bing.com/images/async?" + urllib.parse.urlencode(
