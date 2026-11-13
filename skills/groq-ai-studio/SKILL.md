@@ -127,3 +127,4 @@ start her WITHOUT a Claude session's CLAUDE* variables.
   Gemini full-bleed + three stripes EN/HR (.af + .png in ~/Pictures/<date> <project>/); site image catalogue to Excel; Allow
   remote debugging by Macro Recorder; supervisor approve/reject; one chat per task; web-photo (Kukljica panorama live); live
   screenshot-and-compare self-check; tabbed UI with the lightning full-screen.
+- 13.11.2026: VM Queen (two locations, same skills); screen reading; image-collect (grab mode zero cost, eyesheet/eyemark: Claude Code looks, never paid vision without Marko's OK; strict worship check; collage test in code; free stock hosts only); every paid call asks the Cost Agent gate (:9047, Speechify allowance $0.50/day to confirm); skills second-take-test (tools/rehearsal_test, read PASS/FAIL, still to be tested in her chat) and mpa-shooting corrections.
