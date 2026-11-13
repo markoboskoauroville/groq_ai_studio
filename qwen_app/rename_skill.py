@@ -483,6 +483,10 @@ def ship(repo, message, chat):
         raise SkillError(f"push failed: {out[-300:]}")
     _, sha = _run(["git", "rev-parse", "HEAD"], cwd=d)
     slug = _slug(d)
+    if not list((d / ".github" / "workflows").glob("*.y*ml")):   # nothing builds on GitHub: do not wait for it
+        chat.say(f"Pushed {sha.strip()[:7]} to main. This repository has no GitHub build (it goes live with its own "
+                 f"deploy.sh, if it has one).\nTask finished.")
+        return {"repo": slug, "files": files, "build": "success", "built_on_github": False, "run": ""}
     chat.say(f"Pushed {sha.strip()[:7]} to main. Watching the GitHub Actions run.")
     colour, url = watch_run(slug, sha.strip(), chat)
     if colour.startswith("failure: GitHub did not start") and _deploy_script(d):
@@ -631,7 +635,7 @@ def _task(title, fn, repo=None):
 
 def chat_rename_command(text):
     t = (text or "").strip()
-    if re.match(r"^(open|quit|rename|install|make|ship|deploy|say|book)\s", t, re.I) and re.search(r"<[^>]*>", t):
+    if re.match(r"^(open|quit|rename|install|make|ship|deploy|say|book|add)\s", t, re.I) and re.search(r"<[^>]*>", t):
         return ("Not run: the command still has a placeholder in angle brackets. Write the real name (a hint is enough: "
                 "the skill finds the exact name itself).")
     m = _OPEN.match(t)

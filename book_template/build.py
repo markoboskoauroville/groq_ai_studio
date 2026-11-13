@@ -14,6 +14,19 @@ from pathlib import Path
 
 HERE = Path(__file__).parent
 SPEECHIFY = '<script src="https://speechifykeys.pages.dev/speechify-keys.js" defer></script>'
+BOWL_KIT = Path.home() / "Developer" / "MANTRA_MANIFEST" / "kits" / "donation-bowl"   # the bowl on every book (13.11.2026)
+
+
+def bowl():
+    """The donation bowl block (MANTRA_MANIFEST modules/donation-bowl.md: every page, books yes), its pictures into img/."""
+    kit = BOWL_KIT / "donation-bowl.html"
+    if not kit.exists():
+        return ""
+    (HERE / "img").mkdir(exist_ok=True)
+    for f in ("tibetan-bowl.jpg", "revolut-qr.png"):
+        if not (HERE / "img" / f).exists():
+            (HERE / "img" / f).write_bytes((BOWL_KIT / f).read_bytes())
+    return kit.read_text(encoding="utf-8")
 TABS = ["#C9A46B", "#D8B270", "#DFAB57", "#D68A55", "#CE7A4C", "#C46B41", "#B85F3C", "#AC5636", "#A14E31", "#9A4A2A",
         "#8F4427", "#843E24"]
 
@@ -141,6 +154,7 @@ def main():
 {chr(10).join(toc)}
 </nav>
 {chr(10).join(body)}
+{bowl()}
 <footer class="colophon"><p class="flame">&#10022;</p>{b['colophon_html']}</footer>
 </div>
 {SPEECHIFY}

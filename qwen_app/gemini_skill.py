@@ -51,74 +51,68 @@ def profiles(first=ACCOUNT):
     except Exception:
         return [(first, None)]
     out = [(v["user_name"], k) for k, v in cache.items() if v.get("user_name")]
-    rank = lambda e: (0 if e[0] == first else 2 if "santoshi" in e[0] else 1, e[0])  # noqa: E731
+    # *Mantreshvar (mantreshvar.margii) fails to open its window ("Something went wrong when opening your profile",
+    # 13.11.2026): it goes last, like the band account
+    rank = lambda e: (0 if e[0] == first else 2 if ("santoshi" in e[0] or "mantreshvar" in e[0]) else 1, e[0])  # noqa: E731
     return sorted(out, key=rank)
 
 
 class CDP:
+    """Chrome's DevTools through the broker (cdp_broker.py, 127.0.0.1:9333): ONE permanent connection, so Chrome asks
+    "Allow remote debugging?" once per Chrome session instead of once per picture, and Marko's pointer is not borrowed
+    while he works (13.11.2026). The broker is started here when it is not running."""
+    BROKER = "http://127.0.0.1:9333"
+
     def __init__(self):
-        import websocket  # noqa: PLC0415
+        self.allow_log, self.after = [], 0
         if not PORT_FILE.exists():
             raise GeminiError("Chrome remote debugging is off: chrome://inspect/#remote-debugging")
-        port, path = PORT_FILE.read_text().split()[:2]
-        # Chrome asks "Allow remote debugging?" for this connection; Marko is often away, so Macro Recorder presses Allow
-        # in natural motion (MACRO_SKILLS tools/chrome_allow_debugging.py). The watcher runs ONLY while this connection
-        # opens, so no other app's request is approved by it.
-        import threading  # noqa: PLC0415
-        stop, self.allow_log = threading.Event(), []
-        watcher = None
-        try:
-            import importlib.util  # noqa: PLC0415
-            spec = importlib.util.spec_from_file_location(
-                "chrome_allow", Path.home() / "Developer" / "MACRO_SKILLS" / "tools" / "chrome_allow_debugging.py")
-            allow = importlib.util.module_from_spec(spec)
-            spec.loader.exec_module(allow)
-            watcher = threading.Thread(target=lambda: self.allow_log.extend(allow.watch(90, 3, stop)), daemon=True)
-            watcher.start()
-        except Exception as exc:
-            self.allow_log.append(f"watcher not started: {exc}")
-        try:
-            # Chrome may show "Allow remote debugging?" only after 20-40 s (13.11.2026): wait up to 90 s for the press
-            self.ws = websocket.create_connection(f"ws://127.0.0.1:{port}{path}", timeout=90, suppress_origin=True)
-        except Exception as exc:
-            raise GeminiError(f"cannot reach Chrome's DevTools on {port}: {exc} {self.allow_log}")
-        finally:
-            stop.set()
-            if watcher:
-                watcher.join(timeout=5)
-        self.n = 0
+        if not self._health():
+            py = Path.home() / ".groq" / "venv" / "bin" / "python"
+            subprocess.Popen([str(py), str(Path(__file__).with_name("cdp_broker.py"))],
+                             stdout=open(Path.home() / ".groq" / "cdp_broker.log", "a"), stderr=subprocess.STDOUT,
+                             start_new_session=True)
+        end = time.time() + 630                 # Chrome's one question may wait for Marko up to 10 minutes
+        while time.time() < end:
+            h = self._health()
+            if h and h.get("connected"):
+                break
+            time.sleep(1)
+        else:
+            raise GeminiError("cannot reach Chrome's DevTools: the broker got no connection (Allow not pressed?)")
+        ev = self._get("/events?after=0").get("events", [])
+        self.after = ev[-1]["n"] if ev else 0
         self.events = []
 
+    def _get(self, path):
+        import urllib.request  # noqa: PLC0415
+        with urllib.request.urlopen(self.BROKER + path, timeout=10) as r:
+            return json.load(r)
+
+    def _health(self):
+        try:
+            return self._get("/health")
+        except Exception:
+            return None
+
     def send(self, method, params=None, session=None, timeout=60):
-        self.n += 1
-        mid = self.n
-        msg = {"id": mid, "method": method, "params": params or {}}
-        if session:
-            msg["sessionId"] = session
-        self.ws.send(json.dumps(msg))
-        end = time.time() + timeout
-        while time.time() < end:
-            self.ws.settimeout(max(1, end - time.time()))
-            m = json.loads(self.ws.recv())
-            if m.get("id") == mid:
-                if "error" in m:
-                    raise GeminiError(f"{method}: {m['error'].get('message')}")
-                return m.get("result", {})
-            self.events.append(m)
-        raise GeminiError(f"{method}: no answer in {timeout}s")
+        import urllib.request  # noqa: PLC0415
+        body = json.dumps({"method": method, "params": params or {}, "sessionId": session, "timeout": timeout}).encode()
+        req = urllib.request.Request(self.BROKER + "/send", data=body, headers={"Content-Type": "application/json"})
+        with urllib.request.urlopen(req, timeout=timeout + 15) as r:
+            m = json.load(r)
+        if "error" in m:
+            raise GeminiError(f"{method}: {m['error'].get('message')}")
+        return m.get("result", {})
 
     def wait_event(self, method, timeout=10):
         end = time.time() + timeout
         while time.time() < end:
-            for e in self.events:
+            for e in self._get(f"/events?after={self.after}").get("events", []):
+                self.after = max(self.after, e["n"])
                 if e.get("method") == method:
-                    self.events.remove(e)
                     return e
-            try:
-                self.ws.settimeout(1)
-                self.events.append(json.loads(self.ws.recv()))
-            except Exception:
-                pass
+            time.sleep(0.3)
         return None
 
     def js(self, session, expr, timeout=60):
@@ -129,10 +123,7 @@ class CDP:
         return r.get("result", {}).get("value")
 
     def close(self):
-        try:
-            self.ws.close()
-        except Exception:
-            pass
+        pass                                     # the one connection is the broker's and stays open
 
 
 def _context_of_account(cdp):
@@ -158,6 +149,11 @@ def make_image(prompt, image_path, out_path, account=ACCOUNT, wait=180, max_acco
             tried.append(f"{email}: {str(exc)[:120]}")
             continue
         except GeminiError as exc:
+            # a Chrome box ("Something went wrong when opening your profile") stalls DevTools: Macro Recorder closes it,
+            # checking after every press, before the next account is tried (13.11.2026)
+            if "no answer in" in str(exc):
+                subprocess.run(["python3", str(Path.home() / "Developer" / "MACRO_SKILLS" / "tools" / "chrome_profile_error_ok.py"),
+                                "until"], capture_output=True, text=True, timeout=330)
             # Marko, 12.11.2026: "if images are not generating, if there is a timeout, or if they are not generating
             # after a few minutes, you need to go to the next profile." Only a closed DevTools port stops everything.
             if "remote debugging is off" in str(exc) or "cannot reach Chrome" in str(exc):
@@ -182,7 +178,10 @@ def _make_default(cdp, pdir, opened):
     (tested 12.11.2026: createTarget with another profile's context id fails). So the wanted profile gets a window."""
     import subprocess  # noqa: PLC0415
     before = _default_ctx(cdp)
-    subprocess.run(["open", "-na", "Google Chrome", "--args", f"--profile-directory={pdir}", "about:blank"], check=False)
+    # Chrome's own launcher hands the request to the running Chrome (no second instance, no stolen focus): 13.11.2026
+    subprocess.run(["/Applications/Google Chrome.app/Contents/MacOS/Google Chrome", f"--profile-directory={pdir}",
+                    "about:blank"], check=False, timeout=20,
+                   stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
     for _ in range(30):
         time.sleep(0.5)
         now = _default_ctx(cdp)

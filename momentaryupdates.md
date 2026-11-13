@@ -92,3 +92,9 @@ book to be in my style of design. It needs to have Cloudflare page. It should be
 And it needs to be illustrated by three Gemini accounts. I have 21 profiles. 21. Remember, 21 or 22. I'm not sure. On my Chrome
 browser. And you can check them out. We generate the whole book for free. Let's do it for free. Let's share the knowledge.
 Let's empower the people of the world."
+
+13.11.2026, Marko: "If not already, you confirm. Everything must run the whole operation in the background while I'm using computer.
+It means you are using debugging mode in Chrome browser to do the work, so interaction with mouse is not necessary. I can have mouse
+and keyboard and speakers to do my work. Is that correct? Donation ball comes to every of my pages, except my own biography and my
+dj mantra. For the books, donation yes. it is one more task for Quinn to attach donation balls to all of my books which are on cloud
+three and don't forget to mention this cost analysis in the book we just did with RunPod and Groq calls"

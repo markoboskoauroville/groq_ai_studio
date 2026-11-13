@@ -171,11 +171,14 @@ def draw(repo, which, chat):
         if out.exists() and which == "all":
             continue                                        # never generate the same picture twice
         prompt = f"{b['sketch_style']}\n\nThe scene: {scene}"
-        acct = accounts[i % len(accounts)]                   # three accounts in turn
+        # 13.11.2026: switching accounts opened other profiles' windows, and some profiles fail to open ("Something went
+        # wrong when opening your profile", again and again while Marko worked). Only the profile whose window is already
+        # open draws now (the first account); no profile window is opened for a picture.
+        acct = accounts[0]
         t0 = time.time()
         for attempt in range(1, 4):   # Chrome sometimes does not answer its DevTools door (13.11.2026): wait, try again
             try:
-                r = make_image(prompt, None, str(out.with_suffix(".png")), account=acct, wait=240, max_accounts=3)
+                r = make_image(prompt, None, str(out.with_suffix(".png")), account=acct, wait=240, max_accounts=1)
                 break
             except Exception as exc:
                 if "cannot reach Chrome" not in str(exc) or attempt == 3:
@@ -211,11 +214,67 @@ def build(repo, chat):
     return json.loads(out.strip().splitlines()[-1])
 
 
+# ---------- add bowl ----------
+
+BOWL_KIT = DEV / "MANTRA_MANIFEST" / "kits" / "donation-bowl"
+NO_BOWL = ("markobosko", "djmantra", "djmantraapp")      # Marko: every page "except my own biography and my dj mantra"
+
+
+def add_bowl(repo, chat):
+    """Marko, 13.11.2026: "Donation ball comes to every of my pages ... For the books, donation yes ... attach donation balls
+    to all of my books which are on Cloudflare." A book from book_template gets it from its build; any other page gets the
+    kit's block before its footer (or before </body>), the bowl and QR pictures beside it."""
+    import supervisor  # noqa: PLC0415
+    from rename_skill import repo_dir, SkillError  # noqa: PLC0415
+    try:
+        d = repo_dir(repo)
+    except SkillError:
+        d = DEV / repo.split("/")[-1]
+        code, out = _run(["python3", str(DEV / "DOWNLOAD_MONITOR" / "dlmon.py"), "add", f"clone-{d.name}", "--name",
+                          f"git clone {d.name} (Queen)", "--want-mb", "20", "--info", "for the donation bowl"])
+        code, out = _run(["gh", "repo", "clone", f"markoboskoauroville/{d.name}", str(d)], timeout=600)
+        if code:
+            raise RuntimeError(f"clone failed: {out[-300:]}")
+        chat.say(f"Cloned {d.name}.")
+    if d.name.lower() in NO_BOWL:
+        raise RuntimeError(f"{d.name}: no bowl here (Marko's biography and DJ Mantra are the exceptions)")
+    if (d / "book.json").exists() and (d / "build.py").exists():
+        shutil.copy2(TEMPLATE / "build.py", d / "build.py")              # the template's build carries the bowl
+        code, out = _run(["python3", "build.py"], cwd=d)
+        ok = code == 0 and "mantra-bowl" in (d / "index.html").read_text(encoding="utf-8")
+        chat.say(f"{d.name}: the book's build now carries the bowl ({'checked in index.html' if ok else 'NOT found after build'}).")
+        if not ok:
+            raise RuntimeError("the bowl is not in the built page")
+        return {"repo": d.name, "how": "book build"}
+    pages = [p for p in d.rglob("index.html") if ".git" not in p.parts and "node_modules" not in p.parts]
+    if not pages:
+        raise RuntimeError(f"{d.name}: no index.html")
+    page = min(pages, key=lambda p: len(p.parts))                       # the top-most page
+    html_text = page.read_text(encoding="utf-8")
+    if "mantra-bowl" in html_text:
+        chat.say(f"{d.name}: {page.relative_to(d)} already has the bowl.\nTask finished.")
+        return {"repo": d.name, "how": "already"}
+    block = (BOWL_KIT / "donation-bowl.html").read_text(encoding="utf-8")
+    at = html_text.rfind("<footer")
+    at = at if at != -1 else html_text.rfind("</body>")
+    new = html_text[:at] + block + "\n" + html_text[at:]
+    plan = f"{d.name}: the bowl block into {page.relative_to(d)} before its {'footer' if '<footer' in html_text else '</body>'}; tibetan-bowl.jpg and revolut-qr.png into {(page.parent / 'img').relative_to(d)}/"
+    chat.say("Plan: " + plan)
+    supervisor.propose_and_wait(chat.title, "bowl", plan, plan)
+    page.write_text(new, encoding="utf-8")
+    (page.parent / "img").mkdir(exist_ok=True)
+    for f in ("tibetan-bowl.jpg", "revolut-qr.png"):
+        shutil.copy2(BOWL_KIT / f, page.parent / "img" / f)
+    chat.say(f"{d.name}: bowl added.\nTask finished.")
+    return {"repo": d.name, "how": "inserted", "page": str(page.relative_to(d))}
+
+
 # ---------- chat ----------
 
 _NEW = re.compile(r"^\s*book\s+new\s+(?P<repo>[\w.-]+)\s*$", re.I)
 _WRITE = re.compile(r"^\s*book\s+write\s+(?P<repo>[\w.-]+)\s+chapters?\s+(?P<n>\d+|all)\s*$", re.I)
 _DRAW = re.compile(r"^\s*book\s+draw\s+(?P<repo>[\w.-]+)\s+(?P<w>\d+|all|cover)\s*$", re.I)
+_BOWL = re.compile(r"^\s*add\s+bowl\s+(?P<repo>[\w./-]+)\s*$", re.I)
 _BUILD = re.compile(r"^\s*book\s+build\s+(?P<repo>[\w.-]+)\s*$", re.I)
 
 
@@ -255,6 +314,10 @@ def chat_book_command(text):
     if m:
         r, w = m.group("repo"), m.group("w")
         return _task(f"Book: draw {r} {w}", lambda c: draw(r, w, c), r + "-draw")
+    m = _BOWL.match(t)
+    if m:
+        r = m.group("repo")
+        return _task(f"Add bowl {r.split('/')[-1]}", lambda c: add_bowl(r, c), r)
     m = _BUILD.match(t)
     if m:
         r = m.group("repo")

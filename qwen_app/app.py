@@ -1067,7 +1067,7 @@ def chat():
                 if not line or line.lower() in seen or re.search(r"<[^>]*>|`", line):
                     continue
                 seen.add(line.lower())
-                if ran < 6:
+                if ran < 10:
                     res = chat_rename_command(line)
                     if res:
                         ran += 1

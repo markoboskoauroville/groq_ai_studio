@@ -98,3 +98,9 @@ you do the work, in this order, one command per line (they queue):
 Write only true numbers from the facts file. Never put an email address or a key in a book: the repository is public.
 Round 12 (13.11.2026): `book draw` runs beside the writing and started before `book new` had made the folder; it failed. Write
 `book new` alone first; when it says "Created", write the rest.
+
+The donation bowl (13.11.2026; MANTRA_MANIFEST donation-bowl.md). Marko: "Donation ball comes to every of my pages, except my own
+biography and my dj mantra. For the books, donation yes." `add bowl <REPO>` puts it in (a book from the template gets it from its
+build; any other page before its footer), then `ship <REPO> "<message>"` and `deploy <REPO>`. His books on Cloudflare (13.11.2026):
+AI_FOR_BEGINNERS (ai-for-beginners-book) and WINNING_FILM (howtocreateawinningfilm). Never on markobosko or DJ Mantra.
+Chrome work goes through ONE permanent connection (cdp_broker.py on 9333): Marko keeps his mouse; Chrome asks once per session.
