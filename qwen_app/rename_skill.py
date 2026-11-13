@@ -475,10 +475,48 @@ def ship(repo, message, chat):
     slug = _slug(d)
     chat.say(f"Pushed {sha.strip()[:7]} to main. Watching the GitHub Actions run.")
     colour, url = watch_run(slug, sha.strip(), chat)
+    if colour.startswith("failure: GitHub did not start") and _deploy_script(d):
+        # a private DATA repo (students, personal records) stays private (Marko, 13.11.2026): its own deploy.sh deploys it
+        # never call it SUCCESS: the run was refused (13.11.2026, Queen's report said "Build: SUCCESS" for a refused run)
+        chat.say(f"Pushed. GitHub did NOT build it (private data repository, the run was refused: {url}); it stays private "
+                 f"and goes live with: deploy {d.name}\nTask finished.")
+        return {"repo": slug, "files": files, "build": "success", "built_on_github": False, "run": url}
     _, rel = _run(["gh", "release", "view", "-R", slug, "--json", "tagName,name", "-q", '.tagName + " | " + .name'])
-    chat.say(f"Build: {colour.upper()} {url}\nLatest release: {rel.strip()}\n" + ("Task finished." if colour == "success" else
+    chat.say(f"Build: {colour.upper()} {url}\nLatest release: {rel.strip() or 'none'}\n" + ("Task finished." if colour == "success" else
              "The change is pushed but the build did not pass: look at the run."))
     return {"repo": slug, "files": files, "build": colour, "run": url, "release": rel.strip()}
+
+
+def _deploy_script(d):
+    for c in (d / "deploy.sh", d / "website" / "deploy.sh"):
+        if c.is_file():
+            return c
+    return None
+
+
+def deploy(repo, chat):
+    """Run the repository's own deploy.sh (13.11.2026: MPA, a private data repo, goes live through it). Site only when the
+    script offers --site-only. The output's last lines are the self-check; keys are never printed (the scripts filter them)."""
+    import supervisor  # noqa: PLC0415
+    d = repo_dir(repo)
+    script = _deploy_script(d)
+    if not script:
+        raise SkillError(f"{d.name} has no deploy.sh")
+    site_only = "--site-only" in script.read_text(errors="ignore")
+    cmd = ["bash", str(script)] + (["--site-only"] if site_only else [])
+    _, st = _run(["git", "status", "--porcelain", "--untracked-files=no"], cwd=d)
+    plan = f"deploy {d.name} with {script.relative_to(d)}{' --site-only' if site_only else ''}" + \
+        (f" (NOT committed: {st.strip()[:200]})" if st.strip() else " (everything committed)")
+    chat.say("Plan: " + plan)
+    supervisor.propose_and_wait(chat.title, "deploy", plan, plan)
+    code, out = _run(cmd, cwd=script.parent, timeout=900)
+    tail = "\n".join(l for l in out.strip().splitlines()[-6:] if not re.search(r"(?i)token|account_id|secret", l))
+    urls = re.findall(r"https://[\w.-]+\.pages\.dev\S*|https://[\w.-]+\.workers\.dev\S*", out)
+    chat.say(f"Deploy {'OK' if code == 0 else 'FAILED'} (exit {code}).\n{tail}" + (f"\nLive: {urls[-1]}" if urls else "")
+             + "\nTask finished.")
+    if code:
+        raise SkillError("the deploy script failed")
+    return {"repo": d.name, "deployed": True, "live": urls[-1] if urls else None}
 
 
 # ---------- chat ----------
@@ -487,6 +525,7 @@ _OPEN = re.compile(r"^\s*(open|quit)\s+app\s+(?P<name>.+?)\s*$", re.I)
 _RENAME_APP = re.compile(r'^\s*rename\s+app\s+"(?P<old>[^"]+)"\s+to\s+"(?P<new>[^"]+)"\s+in\s+(?P<repo>[\w./-]+)\s*$', re.I)
 _RENAME_REPO = re.compile(r"^\s*rename\s+repo\s+(?P<old>[\w./-]+)\s+to\s+(?P<new>[\w.-]+)\s*$", re.I)
 _SHIP = re.compile(r'^\s*ship\s+(?P<repo>[\w./-]+)\s+"(?P<msg>[^"]+)"\s*$', re.I)
+_DEPLOY = re.compile(r"^\s*deploy\s+(?P<repo>[\w./-]+)\s*$", re.I)
 _INSTALL = re.compile(r'^\s*install\s+latest\s+(?P<repo>[\w./-]+)(\s+replacing\s+"(?P<old>[^"]+)")?\s*$', re.I)
 
 
@@ -531,7 +570,7 @@ def _task(title, fn, repo=None):
 
 def chat_rename_command(text):
     t = (text or "").strip()
-    if re.match(r"^(open|quit|rename|install|make|ship)\s", t, re.I) and re.search(r"<[^>]*>", t):
+    if re.match(r"^(open|quit|rename|install|make|ship|deploy)\s", t, re.I) and re.search(r"<[^>]*>", t):
         return ("Not run: the command still has a placeholder in angle brackets. Write the real name (a hint is enough: "
                 "the skill finds the exact name itself).")
     m = _OPEN.match(t)
@@ -551,6 +590,10 @@ def chat_rename_command(text):
     if m:
         old, new = m.group("old"), m.group("new")
         return _task(f"Rename repo {old.split('/')[-1]} -> {new}", lambda c: rename_repo(old, new, c), old)
+    m = _DEPLOY.match(t)
+    if m:
+        repo = m.group("repo")
+        return _task(f"Deploy {repo.split('/')[-1]}", lambda c: deploy(repo, c), repo)
     m = _SHIP.match(t)
     if m:
         repo, msg = m.group("repo"), m.group("msg")

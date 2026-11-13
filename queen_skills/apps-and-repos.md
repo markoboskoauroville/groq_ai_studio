@@ -70,3 +70,9 @@ It shows the diff, waits for approval, commits, pushes to main and watches the b
 Write both lines, in that order (they queue).
 Round 11 (13.11.2026): a ship message said "RDP" for a VNC viewer; rejected. Commit messages stay in history: write them from the
 words of the request, never add a technical term you are not sure of.
+
+Deploy a site (13.11.2026): `deploy <REPO>` runs the repository's own deploy.sh (site only when it offers --site-only).
+A repository that holds DATA (students, personal records: mpa-academy) stays PRIVATE; GitHub will not build it, so the order is:
+  ship mpa-academy "<message>"
+  deploy mpa-academy
+Never propose making a data repository public.
