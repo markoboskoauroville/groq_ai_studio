@@ -748,6 +748,7 @@ def eyesheet(a):
             ImageDraw.Draw(sh).text(((i % cols) * 320 + 4, (i // cols) * 320 + 298), f"#{v['eye_idx']}  {v['size'][0]}px  {v['src'][:22]}", fill="black")
         name = J / "eye" / f"sheet_{chunk[0]['eye_idx']:04d}-{chunk[-1]['eye_idx']:04d}.jpg"
         sh.save(name, quality=82)
+        name.with_suffix(".json").write_text(json.dumps([v["eye_idx"] for v in chunk]))
         print(name)
 
 
@@ -756,16 +757,37 @@ def eyemark(a):
     J = ROOT / a.job
     cands = json.loads((J / "cands.json").read_text())
     drop = {int(x) for x in a.drop.split(",") if x.strip()}
+    keep = {int(x) for x in a.keep.split(",") if x.strip()} if a.keep else None
     n = d = 0
     for v in cands.values():
         i = v.get("eye_idx")
-        if i and a.lo <= i <= a.hi:
+        if i and a.lo <= i <= a.hi and not v.get("eye_seen"):
             v["eye_seen"] = True; n += 1
-            v["eye_drop"] = i in drop
+            v["eye_drop"] = (i not in keep) if keep is not None else (i in drop)
             d += v["eye_drop"]
     (J / "cands.json").write_text(json.dumps(cands, indent=1))
     kept = sum(1 for v in cands.values() if v.get("eye_seen") and not v.get("eye_drop"))
     print(f"marked {n} seen, {d} dropped; kept so far {kept}")
+
+
+def eyeapply(a):
+    """eyeapply --verdicts file : lines 'sheet_xxxx-yyyy.jpg KEEP: 3,5,9' -> mark every item on that sheet seen, keep only the listed."""
+    J = ROOT / a.job
+    cands = json.loads((J / "cands.json").read_text())
+    by = {v.get("eye_idx"): v for v in cands.values() if v.get("eye_idx")}
+    tot = kept = 0
+    for line in Path(a.verdicts).read_text().splitlines():
+        m = re.match(r"(sheet_\S+\.jpg)\s+KEEP:\s*([\d,\s]*)", line)
+        if not m:
+            continue
+        idxs = json.loads((J / "eye" / m.group(1)).with_suffix(".json").read_text())
+        keep = {int(x) for x in re.findall(r"\d+", m.group(2))}
+        for i in idxs:
+            v = by.get(i)
+            if v and not v.get("eye_seen"):
+                v["eye_seen"] = True; v["eye_drop"] = i not in keep; tot += 1; kept += i in keep
+    (J / "cands.json").write_text(json.dumps(cands, indent=1))
+    print(f"applied {tot} items, kept {kept}; total kept now {sum(1 for v in cands.values() if v.get('eye_seen') and not v.get('eye_drop'))}")
 
 
 def sheet(a):
@@ -837,7 +859,7 @@ def publish(a):
 
 if __name__ == "__main__":
     ap = argparse.ArgumentParser()
-    ap.add_argument("cmd", choices=["run", "status", "publish", "sheet", "grab", "publish-grab", "eyesheet", "eyemark"])
+    ap.add_argument("cmd", choices=["run", "status", "publish", "sheet", "grab", "publish-grab", "eyesheet", "eyemark", "eyeapply"])
     ap.add_argument("--job", default="ganesha-tn")
     ap.add_argument("--target", type=int, default=222)
     ap.add_argument("--spare", type=int, default=30, help="extra accepted photos kept as replacements")
@@ -848,6 +870,8 @@ if __name__ == "__main__":
     ap.add_argument("--lo", type=int, default=1)
     ap.add_argument("--hi", type=int, default=0)
     ap.add_argument("--drop", default="")
+    ap.add_argument("--keep", default="")
+    ap.add_argument("--verdicts", default="")
     ap.add_argument("--skip", type=int, default=0)
     ap.add_argument("--min-px", type=int, default=1000)
     ap.add_argument("--n", type=int, default=20)
@@ -855,4 +879,4 @@ if __name__ == "__main__":
     ap.add_argument("--out", default="/tmp/sheet.jpg")
     ap.add_argument("--force", action="store_true")
     a = ap.parse_args()
-    {"run": run, "status": status, "publish": publish, "sheet": sheet, "grab": grab, "publish-grab": publish_grab, "eyesheet": eyesheet, "eyemark": eyemark}[a.cmd](a)
+    {"run": run, "status": status, "publish": publish, "sheet": sheet, "grab": grab, "publish-grab": publish_grab, "eyesheet": eyesheet, "eyemark": eyemark, "eyeapply": eyeapply}[a.cmd](a)
