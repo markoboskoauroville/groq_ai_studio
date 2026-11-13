@@ -573,6 +573,13 @@ try:
 except Exception as _cl_exc:
     print(f"[claude_link] not loaded: {_cl_exc}")
 
+# WhatsApp remote (13.11.2026): TTT's RE Magic WhatsApp tab -> Queen -> wa_remote (drafts only).
+try:
+    from whatsapp_remote import register as _register_wa_remote
+    _register_wa_remote(app)
+except Exception as _wa_exc:
+    print(f"[whatsapp_remote] not loaded: {_wa_exc}")
+
 # Skill: band posters (12.11.2026): next concert + whole-band photos (her eyes) -> Affinity posters, unsaved tabs.
 try:
     from poster_skill import register as _register_posters
