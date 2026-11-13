@@ -18,7 +18,8 @@ Result: Drive folder with 001_<short-description>.<ext> ... and 000_sheet.csv (n
 Cost: about $0.004 to $0.01 per judged candidate; cap with budget; say the spent total. Judgements are cached in cands.json: a re-run costs nothing for old ones.
 Self-check before "done" (rule 8): count the Drive folder with `rclone lsf`; open 20 at random with your eyes AND show Claude a contact sheet; replace any misfit; report
 accepted, rejected and why, license mix. If you cannot reach 222 honestly, say how many you have and what is missing; never pad with misfits.
-Lesson 1 (13.11.2026, measured on the first 8 candidates): asked "collage_or_screenshot?" you answered TRUE for every picture, including plain beach photographs
-(your own reasons even said "beach scene, people carrying the idol"). A negative flag that costs the picture is answered carelessly. The script now asks positive
-questions (`single_photograph`, `clean_of_watermark`: true = fine, false only when it is clearly several pictures joined, a phone screenshot, a poster, a visible
-watermark) and first makes you write what you see (`look`). Keep every judging question positive and put the description before the verdict.
+Lesson 1 (13.11.2026, measured, Claude looked at the same 8 pictures): you answered "collage / vertical stack of several frames" (collage_or_screenshot true, and
+after rewording single_photograph false) for plain single photographs of a beach immersion and a decorated idol, and your "reason" even contradicted it. Your eyes are NOT
+reliable for "is this one picture or several". So that test is no longer yours: the script decides collage/screenshot/poster by file title, description, categories and aspect
+ratio (> 2.6). You still judge real_photo, watermark, Ganesha visible, worship, place. Never invent structure ("a vertical stack of frames") that you cannot point at;
+describe only what you see in `look`.

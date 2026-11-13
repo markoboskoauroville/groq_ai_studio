@@ -265,8 +265,11 @@ def decide(j, c):
         return False, "not a real photo (AI/illustration)"
     if j.get("clean_of_watermark") is False:
         return False, "watermark / stock preview"
-    if j.get("single_photograph") is False:
-        return False, "collage / screenshot"
+    # Queen's single_photograph answer is NOT used: she called plain single photos "vertical stacks of frames" (lesson 1).
+    if re.search(r"collage|montage|screenshot|poster|banner|wallpaper|infographic|logo", " ".join([c["title"], c["desc"], " ".join(c["cats"])]), re.I):
+        return False, "collage / screenshot (by file metadata)"
+    if max(c["w"], c["h"]) / max(1, min(c["w"], c["h"])) > 2.6:
+        return False, "collage / banner (extreme aspect ratio)"
     if not j.get("ganesha_visible"):
         return False, "no Ganesha visible"
     if int(j.get("people_count") or 0) < 1:
