@@ -98,3 +98,6 @@ It means you are using debugging mode in Chrome browser to do the work, so inter
 and keyboard and speakers to do my work. Is that correct? Donation ball comes to every of my pages, except my own biography and my
 dj mantra. For the books, donation yes. it is one more task for Quinn to attach donation balls to all of my books which are on cloud
 three and don't forget to mention this cost analysis in the book we just did with RunPod and Groq calls"
+
+13.11.2026, Marko: "don't ask me if I see something. You have screen-capturing possibilities with Macro Recorder and with our Queen, so use that teach the queen to learn to read screens and ask her if there's a subtitle on the screen. She must tell you. If she lies, then you fix her skill."
+Status: started (route /api/screen/look, skill read-screen.md, truth tests against the Voice Engine subtitle).
