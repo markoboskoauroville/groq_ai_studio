@@ -61,3 +61,13 @@ Now, this renaming, she needs to understand. You stop doing anything physically 
 Mantra, Macro, and Queen are doing everything. You are just giving the tasks. You are writing the skills, and you are assessing and
 reviewing what I did and making corrections. You are the master teacher of this tool. I am telling you what to do, and you use those
 guys to test them, assess them, fix them. You always need to do corrections until they come to the level of your Opus model."
+
+13.11.2026, Marko: "please also update the user interface. She needs to always summarize where we are. Give a kind of one-sentence
+description of where we are now and what we are doing. There is a model name at the top, next to the model name, like a current
+situation news channel with one or two sentences maximum, three. Then you can move this plus/minus zooming in the line with tabs
+next to the settings. We have a news channel thing reporting what's going on in the chat in a summarized view at the top. Let's
+make it max 4 sentences"
+
+13.11.2026, Marko (on names): "The name can be an approximation. It can be just a symbol of the name. It needs to find the best
+matching, even an abbreviation. It needs to find what is the only match. It needs to offer me the top 5 matches ... what she thinks
+makes the most sense needs to be at the top."

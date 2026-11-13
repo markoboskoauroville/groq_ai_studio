@@ -25,6 +25,12 @@ class TaskChat:
 
     def say(self, text, role="assistant"):
         self.messages.append({"role": role, "content": text})
+        if role == "assistant":       # every step is a handover line (13.11.2026)
+            try:
+                from news import handover
+                handover(f"{self.title}: {text}")
+            except Exception:
+                pass
         self._save()
 
     def _save(self):

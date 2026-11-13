@@ -579,6 +579,10 @@ try:
     _register_web_photo(app, pool, record_spend)
     from live_check import register as _register_live_check
     _register_live_check(app, pool, record_spend)
+    from news import register as _register_news
+    _register_news(app, pool, record_spend)
+    from data_sync import register as _register_data_sync
+    _register_data_sync(app)
 except Exception as _ps_exc:
     print(f"[poster_skill] not loaded: {_ps_exc}")
 
@@ -894,6 +898,9 @@ def chat():
         from affinity_bridge import chat_app_command
         local_answer = chat_app_command(last_user_text)
         if not local_answer:
+            from rename_skill import chat_rename_command
+            local_answer = chat_rename_command(last_user_text)
+        if not local_answer:
             from repo_reader import chat_repo_command
             local_answer = chat_repo_command(last_user_text)
         if not local_answer:
@@ -920,6 +927,12 @@ def chat():
         local_answer = f"The skill failed, nothing was made: {type(_exc).__name__}: {_exc}"
         print(f"[skills] chat command failed: {_exc}", flush=True)
     if local_answer:
+        try:
+            from news import handover
+            handover(f"Command: {last_user_text[:160]} -> {local_answer[:220]}")
+        except Exception:
+            pass
+
         def local_stream():
             yield json.dumps({"t": local_answer}) + "\n"
             yield json.dumps({"u": {
@@ -1027,6 +1040,34 @@ def chat():
             total_tokens = int((len(joined_content) + len(joined_reasoning)) / 3.8) + 10
             prompt_tokens = max(5, total_tokens - (len(joined_content) + len(joined_reasoning)) // 4)
             completion_tokens = max(1, total_tokens - prompt_tokens)
+
+        # 13.11.2026 (claude-teaches-only.md): her own answer is her hand. A line of her answer that is one of her chat
+        # commands (open app / rename app / rename repo / install latest) is RUN, and its result is part of the answer.
+        # Before this, she could only describe a step and wait for someone to type it. Changes still wait for approval.
+        try:
+            from rename_skill import chat_rename_command
+            ran, seen = 0, set()
+            body = re.sub(r"<think>.*?</think>", "", joined_content, flags=re.S)
+            for raw in body.splitlines():
+                line = raw.strip().strip("`").strip()
+                line = re.sub(r"^([-*>]|\d+[.)])\s+", "", line).strip().strip("`").strip()
+                # a quoted usage line (placeholders, or text after the command) is not a command: skip it quietly
+                if not line or line.lower() in seen or re.search(r"<[^>]*>|`", line):
+                    continue
+                seen.add(line.lower())
+                if ran < 6:
+                    res = chat_rename_command(line)
+                    if res:
+                        ran += 1
+                        yield json.dumps({"t": f"\n\n▶ {line}\n{res}"}) + "\n"
+        except Exception as _exc:
+            yield json.dumps({"t": f"\n\n▶ the command could not run: {type(_exc).__name__}: {_exc}"}) + "\n"
+
+        try:   # the chat step in the handover (13.11.2026)
+            from news import handover
+            handover(f"Chat: Marko: {last_user_text[:160]} -> Queen: {re.sub(r'<think>.*?</think>', '', joined_content, flags=re.S)[:220]}")
+        except Exception:
+            pass
 
         cost_info, ledger = record_spend(model, prompt_tokens, completion_tokens, req_id)
         speed = round(completion_tokens / max(elapsed, 0.05), 1)
@@ -1548,8 +1589,17 @@ def get_chat(chat_id):
     except Exception as exc:
         return jsonify(error=str(exc)), 500
 
+def _mark_data_dirty():
+    try:
+        from data_sync import mark_dirty
+        mark_dirty()
+    except Exception:
+        pass
+
+
 @app.post("/api/chats/save")
 def save_chat():
+    _mark_data_dirty()
     """
     Save or update a chat.
     JSON Body: { "id": "s_123", "title": "...", "messages": [...] }
@@ -1628,6 +1678,7 @@ def rename_chat():
 @app.post("/api/chats/delete")
 def delete_chat():
     """Delete a chat. JSON Body: { "id": "..." }"""
+    _mark_data_dirty()   # deleted here = deleted in groq_ai_studio_data on the next sync (13.11.2026)
     data = request.get_json(silent=True) or {}
     chat_id = (data.get("id") or "").strip()
     if not chat_id:
