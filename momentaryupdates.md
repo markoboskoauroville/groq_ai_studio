@@ -122,3 +122,7 @@ no screenshot file made. Open: Marko switches Accessibility on for Groq AI Studi
 
 Marko, 14.11.2026 (word for word, dictated): "Yes. Delete the flask. Actually, delete it from the system. Yes. Delete it. And, but keep the repository on GitHub. And rename Groq I Studio Mac. Actually, re... Rename the app in Groq slash Queen AI Studio."
 Status: DONE 14.11.2026: local folder ~/Developer/GROQ_AI_STUDIO_MAC deleted (repo kept on GitHub); app renamed Groq/Queen AI Studio (Mantra) v3, bundle file "Groq Queen AI Studio (Mantra).app".
+
+
+Marko, 14.11.2026 (word for word, dictated): "please reduce the output volume on my computer to 10%"
+Status: OPEN 14.11.2026: Queen had no route for it; building POST/GET /api/system/volume + local chat command + queen_skills/system-volume.md.
