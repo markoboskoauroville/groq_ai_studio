@@ -1,5 +1,16 @@
 # Groq AI Studio: lessons
 
+14.11.2026 (night, cloud): PHASE A. (1) Two key pools on the same files: the Python pool kept key_state.json in memory and
+wrote it back whole, so it could undo a cooldown the Swift pool had just written. Both pools now read keys.txt and
+key_state.json from disk before every candidates/cool/good (groq_pool `_sync`). (2) The system prompt is not copied into Swift
+by hand: a stdlib-only helper (`mac_app/tools/gen_prompt.py`) takes it out of app.py with ast and the CI test compares the
+Swift prompt with Python's byte for byte; a hand copy would drift at the first skill or prompt edit. (3) Port ownership: BSD
+sockets with SO_REUSEADDR only, never SO_REUSEPORT, so two Queens can never share 8765. (4) Talking to waitress from Swift:
+ask HTTP/1.0 and the answer is never chunked; the proxy re-sends the request with `Connection: close` and pipes the bytes, so
+NDJSON and SSE stream unchanged. (5) After a release vN, a change under mac_app/ rebuilds and overwrites the same vN: docs and
+Python changes after a release stay outside mac_app/, a code change gets vN+1.
+
+
 14.11.2026: WHATSAPP ON ANDROID. uiautomator says "could not get idle state" on WhatsApp until the animations are off (window/transition/animator scale 0; the door re-applies them after every Android restart), and a failed dump leaves the OLD file: always rm it first, never reuse it. A tap that missed the search bar opened Snoopy Badjan's chat and the name was typed into his box (and a test pasted text into Svemir's box): type only after checking that the field you mean is open, end every test with clear and a look for "Draft:" rows. Unread counts live in content-desc ("14 unread messages"), not text. `adb input text` cannot type č ć š đ ž: the clipboard helper watext.dex + KEYCODE_PASTE can.
 
 14.11.2026: THE WHATSAPP DOOR. (1) Rules alone planned "show me the last messages from Svemir" as a screenshot; Claude corrected it to read {chat}, and the lesson now plans it right first (plan_by_lessons), with no duplicate lessons when two phones ask at once. (2) wa_remote's span[title] matched message previews too, so "Svemir" gave nine choices: chat titles are [data-testid=cell-frame-title] only. (3) An open Archived panel covered the search box and a click opened a wrong chat: the box must really be visible (Escape closes a panel) and a wrong header stops. (4) A door started Firefox inside its own cgroup, so restarting the door killed WhatsApp: Firefox starts in its own systemd scope, KillMode=process. (5) vm-whatsapp opened two WhatsApp tabs (home page + URL), which fight ("open in another window"): one tab only. (6) WhatsApp Web calls: browser support can be met in Firefox (Chrome UA + COOP same-origin for SharedArrayBuffer) but calling is a per-account server flag (enable_web_calling); do not chase it with browser settings.

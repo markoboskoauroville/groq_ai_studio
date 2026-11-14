@@ -2,6 +2,61 @@
 
 # Groq AI Studio: takeover
 
+## 14.11.2026 (night, cloud): PHASE A, the Swift app IS Queen on 8765 (app v5)
+
+Marko: "one Queen only, the Swift app, no Flask server behind it, done in phases." Report: `docs/PHASE_A_REPORT.md`.
+
+**Ports.** `127.0.0.1:8765` = the Swift app (`mac_app/app/core/`, BSD sockets, no dependency). `127.0.0.1:8766` = the Python
+server, internal only, no web page, started by the app as its child (`~/.groq/qwen` with `QWEN_BACKEND=1 GROQ_PORT=8766`,
+log `~/.groq/qwen_backend.log`, its port in `~/.groq/backend_port`). The app writes `active_port`=8765 and `app_url`. A watchdog
+checks the backend every 5 s and starts it again after 3 failed checks (at most once per 20 s). START QUEEN restarts it, OFF
+stops both. If an OLD Python Queen holds 8765 when the app starts (her `/api/app/status` has no `"face"`), she gets SIGTERM
+and the app takes the port. On Linux (the VM) nothing changed: `app.py` alone on 8765 (`QWEN_BACKEND` unset).
+
+**Moved to Swift (same paths, same JSON/NDJSON/SSE shapes):** `/health`, `/api/version`, `/api/app/status` (+ `face`, `backend`,
+`app_version`), `/api/models`, `/api/billing`, `/api/chat`, `/api/events`, `/api/session/messages`, `/api/remote/send`
+(+ `test_bad_key:true` for a live failover test), `/api/chats`, `/api/chats/<id>`, `/api/chats/save|rename|delete`, `/api/keys`,
+`/api/keys/import|upload|delete|clear|load-file`, `/api/reset-keys`, `/api/claude/ask|tell|status|sessions|transcript` (headless
+`claude -p` on the plan, the consent gate 409 kept), `/api/supervisor/propose|pending|get|recent|decide`, `/api/skills/list`,
+`/api/training/correct|status|build` (status/build run build_dataset through a small Python helper), `/`, and the same security
+guard (Origin / Referer / Sec-Fetch-Site / X-Queen-Token).
+- Key pool = port of groq_pool (same `keys.txt`, `.env`, `key_state.json`, sha256[:12] ids; 401/403 = every model 30 days,
+  else this model for Retry-After, min 5 s, default 60 s; failover only before the first token). The ledger = port of
+  record_spend on `spend_ledger.json`, and the Cost Agent hears every paid call (`POST /spent`).
+- The system prompt is built exactly like `build_queen_system_prompt()`: the bundled helper `gen_prompt.py` reads the installed
+  `~/.groq/qwen_app/app.py` with ast (again whenever it changes); every `queen_skills/*.md` is added every turn. CI compares the
+  Swift prompt to Python's byte for byte.
+- `/api/chat` in Swift asks the backend for the two parts that stay Python in Phase A: the local chat commands
+  (`POST /api/internal/local_command`, matched before Groq is called) and the after-turn work (`POST /api/internal/after_turn`:
+  training log, her command lines run, handover). Backend down = no local commands, Groq still answers.
+
+**Proxied to 8766, unchanged and streamed:** every other route (brain, router, vision, screen, ax, whatsapp, affinity, gemini,
+posters, star, voice, elevate, repo, github, news, handover, data-sync, self_update, auto_update, key_tester, system, test/live,
+a multipart key upload). The backend's `/api/events` are relayed into the Swift `/api/events`.
+
+**Install on the Mac (morning, in this order):**
+1. `cd ~/Developer/groq_ai_studio && git pull --ff-only && ./install.sh` (the Python side: new `qwen` launcher, internal routes).
+2. `mac_app/install.sh v5`. It does: `gh release download v5 --repo markoboskoauroville/groq_ai_studio --pattern app.zip`,
+   quits the old app (`osascript -e 'tell application "Groq/Queen AI Studio (Mantra)" to quit'`), unpacks into /Applications,
+   signs `codesign --force -s "Mantra Apps"` (axread, then the app).
+3. `open "/Applications/Groq Queen AI Studio (Mantra).app"`. If an old Python Queen still runs on 8765, the app stops her itself.
+4. `curl -s 127.0.0.1:8765/api/app/status` shows `"face": "swift"` and `"backend": {"up": true, "port": 8766}`.
+
+**Morning tests for Marko:**
+1. `queen "hello"`: an answer (Swift `/api/chat`).
+2. A skill question: `queen "how do you read my WhatsApp without a screenshot?"` (skill whatsapp-accessibility in the prompt).
+3. `curl -s -X POST 127.0.0.1:8765/api/claude/ask -H 'Content-Type: application/json' -d '{"question":"say hi"}'` (local Claude).
+4. macro_router as usual (it calls `/api/brain/plan`, proxied), or
+   `curl -s -X POST 127.0.0.1:8765/api/brain/plan -H 'Content-Type: application/json' -d '{"goal":"open Notes","catalogue":{"actions":[{"name":"open_app"}]}}'`.
+5. The Swift window: type "hello", then "list sessions" (a local command through the backend).
+6. Failover: `curl -s -X POST 127.0.0.1:8765/api/remote/send -H 'Content-Type: application/json' -d '{"prompt":"hi","fresh":true,"test_bad_key":true}'`
+   gives `"failovers": 1`.
+
+**Next (Phase B, by hand group; each one leaves the proxy when its Swift port is green):** affinity, ax/whatsapp, screen/vision,
+gemini/CDP, skills posters, elevate, star, voice, system, repo/github, news/handover/data-sync, self_update, auto_update; then the
+local chat commands and after-turn (they are Python today), then Phase C deletes Flask. Details in `docs/PHASE_A_REPORT.md`.
+
+
 **14.11.2026, Mac: the Swift app and Accessibility.** Marko: "now it is time to convert our Grok AI Studio into a Swift app ... upgrade it
 with new skills for accessibility ... check my last 5 WhatsApp messages ... who sent them and what was not responded to. Without taking
 screenshots". (1) **Groq/Queen AI Studio (Mantra)**, `mac_app/` (SwiftUI, no web view): the face of this server (status line from the new cheap
