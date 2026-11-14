@@ -184,3 +184,6 @@
 
 
 - 14.11.2026 (v3): renamed to Groq/Queen AI Studio (Mantra). A '/' cannot be in a file name, so the bundle is `Groq Queen AI Studio (Mantra).app` and CFBundleName/DisplayName, window title and APP_NAME carry the slash. Bundle id community.auroville.groqaistudio kept (permissions, updater). The updater finds the asset `app.zip` and the bundle by the running bundle's file name, so v1/v2 (old file name) cannot self-update to v3: install by hand once. The leftover repo GROQ_AI_STUDIO_MAC is kept on GitHub, unused; its local folder was deleted.
+
+- 14.11.2026: asked to set the Mac volume, Queen invented an endpoint (/api/system/volume) that did not exist. A missing hand is built (route + local
+  chat command + skill), and her answer is the read-back value, not the number requested. The output device is never changed.

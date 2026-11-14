@@ -125,4 +125,4 @@ Status: DONE 14.11.2026: local folder ~/Developer/GROQ_AI_STUDIO_MAC deleted (re
 
 
 Marko, 14.11.2026 (word for word, dictated): "please reduce the output volume on my computer to 10%"
-Status: OPEN 14.11.2026: Queen had no route for it; building POST/GET /api/system/volume + local chat command + queen_skills/system-volume.md.
+Status: DONE 14.11.2026: volume read back 10; built POST/GET /api/system/volume + local chat command + queen_skills/system-volume.md.

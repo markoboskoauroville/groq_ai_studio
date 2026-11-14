@@ -632,6 +632,13 @@ except Exception as _ax_exc:
     print(f"[ax] not loaded: {_ax_exc}")
 
 
+try:
+    from system_volume import register as _register_volume
+    _register_volume(app)
+except Exception as _vol_exc:
+    print(f"[system_volume] not loaded: {_vol_exc}")
+
+
 @app.get("/api/app/status")
 def app_status():
     """One cheap line for the Swift app (Groq/Queen AI Studio (Mantra)): no network call, ledger and pool only (14.11.2026)."""
@@ -959,6 +966,9 @@ def chat():
         # 14.11.2026, Mac: "check my last 5 WhatsApp messages" -> read through Accessibility (whatsapp_ax), never a screenshot
         local_answer = None
         if sys.platform == "darwin":
+            from system_volume import chat_volume_command   # 14.11.2026: Mac output volume, $0, before anything else
+            local_answer = chat_volume_command(last_user_text)
+        if not local_answer and sys.platform == "darwin":
             from whatsapp_ax import chat_whatsapp_ax_command
             local_answer = chat_whatsapp_ax_command(last_user_text)
         from whatsapp_machine import chat_whatsapp_machine_command
