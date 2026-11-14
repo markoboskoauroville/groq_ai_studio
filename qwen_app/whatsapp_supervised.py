@@ -39,7 +39,9 @@ SKILL_FILES = ("whatsapp-supervised.md", "whatsapp-remote.md", LESSONS)
 MODEL = "qwen/qwen3.6-27b"
 CLAUDE_MODEL = "sonnet"
 CLAUDE_TIMEOUT = 90
-ACTIONS = ("shot", "open", "scroll", "draft", "photo_draft", "chats", "read", "call", "answer", "hangup")
+ACTIONS = ("shot", "open", "scroll", "draft", "photo_draft", "chats", "read", "unread", "clear", "call", "answer", "hangup")
+# Marko, 14.11.2026: WhatsApp Business on Pixel 2 is THE WhatsApp machine; Firefox WhatsApp Web only when Android is down.
+WA_ANDROID = Path.home() / "Developer" / "claude-code" / "tools" / "wa_android.py"
 DOOR = "http://100.102.86.30:8879"                          # the WhatsApp door (calls: WhatsApp Business on Pixel 2)
 DOOR_TOKEN = Path.home() / ".config" / "chromium-vm" / "wa-door-token"
 LOG = Path.home() / ".groq" / "whatsapp_supervised.log"
@@ -97,6 +99,10 @@ def plan_by_lessons(text):
 
 def plan_by_queen_rules(text):
     t = text.strip()
+    if re.search(r"\bunread\b|\bnepročitan", t, re.I) and len(t) < 80:
+        return {"action": "unread"}
+    if re.fullmatch(r"(?:please\s+)?(?:clear|empty|delete)\s+(?:the\s+)?(?:draft|message box|box)\W*", t, re.I):
+        return {"action": "clear"}
     m = READ.match(t) if re.match(r"^(?:please\s+)?(read|pročitaj|procitaj)\b", t, re.I) else None
     if m:
         p = {"action": "read", "n": int(m.group(2) or 10)}
@@ -154,11 +160,12 @@ def plan_by_queen_model(text, conv):
 def assess(text, queen_plan, conv):
     import claude_link  # noqa: PLC0415
     prompt = (
-        "You SUPERVISE Queen, who controls WhatsApp Web in Marko's Firefox (VM) by ONE action per request. You are the teacher: "
+        "You SUPERVISE Queen, who controls Marko's WhatsApp (WhatsApp Business on the VM's Android Pixel 2; WhatsApp Web in "
+        "Firefox only as the fallback) by ONE action per request. You are the teacher: "
         "check her plan BEFORE it runs. Her skills:\n\n" + _skills() +
         "\n\n---\nActions: shot (picture of the screen, chat list), open {chat}, scroll {dir up|down}, draft {chat, text} "
         "(typed UNSENT into the box), photo_draft {chat, text}, chats (list the chat titles), read {chat?, n} (last n messages "
-        "of the open chat, or of chat), call {chat} (a WhatsApp voice call from WhatsApp Business on the VM's Pixel 2, only "
+        "of the open chat, or of chat), unread (chats with unread messages), clear (empty the open chat's message box), call {chat} (a WhatsApp voice call from WhatsApp Business on the VM's Pixel 2, only "
         "when Marko clearly asks to call someone), answer (take the ringing call), hangup (end or decline the call), none "
         "(nothing can or should be done: say why). There is NO send action: sending is never planned. A draft's text is Marko's words "
         "verbatim (his language), without the instruction words around them. chat is the name as he said it; the hands "
@@ -254,8 +261,71 @@ def _door(path, body):
         return {"ok": False, "say": f"The WhatsApp door did not answer: {exc}"}
 
 
+def _android(*args, timeout=150):
+    import subprocess as sp, sys as _s  # noqa: PLC0415
+    r = sp.run([_s.executable, str(WA_ANDROID), "--json", *args], capture_output=True, text=True, timeout=timeout)
+    line = next((l for l in reversed(r.stdout.strip().splitlines()) if l.startswith("{")), "")
+    try:
+        return json.loads(line)
+    except Exception:
+        return {"ok": False, "error": (r.stderr.strip().splitlines() or ["wa_android gave no answer"])[-1][:300]}
+
+
+def android_ready():
+    if not WA_ANDROID.exists():
+        return False
+    s = _android("status", timeout=30)
+    return bool(s.get("ok") and s.get("linked"))
+
+
+def run_android(plan):
+    """The plan on WhatsApp Business (Pixel 2). Never sends: draft types into the box only."""
+    a = plan["action"]
+    chat = (plan.get("chat") or "").strip()
+    if a == "shot":
+        r = _android("chats")
+        return {"ok": bool(r.get("ok")), "say": "WhatsApp Business on Pixel 2 (the live screen is in the app).", "action": a,
+                "choices": [], "machine": "android"}
+    if a == "chats":
+        r = _android("chats")
+        return {"ok": bool(r.get("ok")), "say": r.get("text") or r.get("error", ""), "choices": (r.get("chats") or [])[:12],
+                "action": a, "machine": "android"}
+    if a == "unread":
+        r = _android("unread")
+        return {"ok": bool(r.get("ok")), "say": r.get("text") or r.get("error", ""), "choices": [u["chat"] for u in r.get("unread", [])],
+                "action": a, "machine": "android"}
+    if a == "scroll":
+        _android("status")
+        import subprocess as sp  # noqa: PLC0415
+        y1, y2 = (700, 1900) if plan.get("dir", "up") == "up" else (1900, 700)
+        sp.run(["adb", "-s", "127.0.0.1:5556", "shell", f"input swipe 540 {y1} 540 {y2} 300"], capture_output=True, timeout=20)
+        return {"ok": True, "say": f"Scrolled {plan.get('dir', 'up')}.", "action": a, "choices": [], "machine": "android"}
+    if a == "clear":
+        r = _android("clear")
+        return {"ok": bool(r.get("ok")), "say": r.get("text") or r.get("error", ""), "action": a, "choices": [], "machine": "android"}
+    if a == "open":
+        r = _android("open", chat)
+    elif a == "read":
+        r = _android("read", *([chat] if chat else []), str(int(plan.get("n") or 10)))
+    elif a == "draft":
+        if not plan.get("text"):
+            return {"ok": False, "say": "What should the draft say?", "action": a, "choices": [], "machine": "android"}
+        r = _android("draft", chat, plan["text"])
+    else:
+        return None
+    if r.get("choices"):
+        WR.PENDING.update(plan=dict(plan), at=time.time())
+    return {"ok": bool(r.get("ok")), "say": r.get("text") or r.get("error", ""), "chat": r.get("chat", ""),
+            "draft": r.get("draft") if r.get("match") else None, "messages": r.get("messages", []),
+            "choices": r.get("choices") or [], "action": a, "machine": "android"}
+
+
 def run_plan(plan):
     a = plan["action"]
+    if a not in ("call", "answer", "hangup", "photo_draft") and android_ready():
+        res = run_android(plan)
+        if res is not None:
+            return res
     if a in ("call", "answer", "hangup"):
         if a == "call" and not (plan.get("chat") or "").strip():
             return {"ok": False, "say": "Who should be called?", "action": a, "choices": []}
@@ -267,8 +337,11 @@ def run_plan(plan):
         r = WR._wa(*args)
         return {"ok": bool(r.get("ok")), "say": r.get("text") or r.get("error") or "", "chat": r.get("chat", ""),
                 "messages": r.get("messages", []), "action": a, "choices": []}
+    if a in ("unread", "clear"):
+        return {"ok": False, "say": f"'{a}' needs WhatsApp Business on Pixel 2, which is not ready.", "action": a, "choices": []}
     res = WR.execute(dict(plan))
     res.pop("image_b64", None)
+    res["machine"] = "firefox"
     return res
 
 
@@ -334,6 +407,7 @@ def supervised(text, conv_id, pick=""):
            "choices": res.get("choices") or [], "shot": True, "queen_plan": queen_plan, "understood": how}
     if res.get("messages"):
         out["messages"] = res["messages"]
+    out["machine"] = res.get("machine", "")
     return out
 
 
