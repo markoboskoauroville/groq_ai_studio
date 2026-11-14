@@ -580,6 +580,13 @@ try:
 except Exception as _wa_exc:
     print(f"[whatsapp_remote] not loaded: {_wa_exc}")
 
+# WhatsApp supervised (14.11.2026): Queen plans, the local Claude Code assesses and corrects, then the hands act.
+try:
+    from whatsapp_supervised import register as _register_wa_supervised
+    _register_wa_supervised(app, pool, record_spend)
+except Exception as _was_exc:
+    print(f"[whatsapp_supervised] not loaded: {_was_exc}")
+
 # Skill: band posters (12.11.2026): next concert + whole-band photos (her eyes) -> Affinity posters, unsaved tabs.
 try:
     from poster_skill import register as _register_posters
