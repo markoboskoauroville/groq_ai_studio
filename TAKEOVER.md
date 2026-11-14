@@ -1,5 +1,7 @@
 # Groq AI Studio: takeover
 
+**14.11.2026, VM:** the WhatsApp machine: Queen opens the VM's Firefox with remote control and WhatsApp (`open whatsapp`), reports linked/QR, and runs WhatsApp requests (`whatsapp: ...`) through wa_remote, drafts unsent. Skill queen_skills/whatsapp-machine.md, code qwen_app/whatsapp_machine.py. Waiting: Marko scans the QR code.
+
 ## 13.11.2026: the second location, Queen on the VM chromium-vm (MANTRA_MANIFEST modules/two-locations.md)
 Marko: "Queen must be in the virtual machine ... any lessons or skills are written in the same repository ... we are in two locations."
 - VM (`ssh ubuntu@chromium-vm`, Ubuntu aarch64): `git clone` of this repo in ~/Developer/groq_ai_studio, `./install.sh` into ~/.groq (venv, the same files),

@@ -157,3 +157,11 @@
 - A second Queen with `data_sync.py` unguarded would mirror its own empty chats over the Mac's data repo (rsync --delete): any new location needs a guard first.
 - Her Mac skills (read-screen: "display 1 = BenQ") bleed into answers on the VM: a skill true on one machine only must say so in its first line.
 - Non-interactive `ssh host cmd` has no ~/.local/bin on the PATH: put the export at the very top of ~/.bashrc (Ubuntu's returns early when not interactive).
+
+## 14.11.2026: the WhatsApp machine on the VM
+- The VM's Firefox (profile ~/.config/vm-firefox, class VMFirefox) is WhatsApp only: `vm-whatsapp start|status|qr` (vm-chromium/desktop),
+  BiDi on 127.0.0.1:9223 like the Mac, home page web.whatsapp.com in user.js. Queen: `open whatsapp`, `whatsapp status`, `whatsapp qr`,
+  `whatsapp: <request>` (qwen_app/whatsapp_machine.py, VM only), skill queen_skills/whatsapp-machine.md. Tested through `queen` on the VM,
+  from a closed Firefox too.
+- The hands on the VM are the Mac's: a sparse clone of claude-code (tools/wa_remote.py) and firefox-control (firefoxctl), both pulled by
+  two_locations_sync.sh on Linux only. wa_remote used `sips`: now ImageMagick on Linux.

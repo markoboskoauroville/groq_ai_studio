@@ -15,7 +15,9 @@ D="$HOME/Developer"; LOG="$HOME/.cache/two-locations"; mkdir -p "$LOG"
 export PATH="$HOME/.local/bin:/opt/homebrew/bin:/usr/local/bin:$PATH" GIT_TERMINAL_PROMPT=0
 OS="$(uname -s)"; NOW="$(date '+%d.%m.%Y %H:%M:%S')"
 say() { printf '%s %s\n' "$NOW" "$*" >> "$LOG/sync.log"; }
-for r in groq_ai_studio MANTRA_MACRO MACRO_SKILLS MANTRA_MANIFEST; do
+# 14.11.2026, VM only: the WhatsApp machine's hands (claude-code is a sparse clone holding tools/wa_remote.py; firefox-control = firefoxctl)
+EXTRA=""; [ "$OS" = Linux ] && EXTRA="claude-code FIREFOX_CONTROL"
+for r in groq_ai_studio MANTRA_MACRO MACRO_SKILLS MANTRA_MANIFEST $EXTRA; do
   [ -d "$D/$r/.git" ] || continue
   before="$(git -C "$D/$r" rev-parse HEAD 2>/dev/null)"
   if ! out="$(git -C "$D/$r" pull --ff-only -q 2>&1)"; then
