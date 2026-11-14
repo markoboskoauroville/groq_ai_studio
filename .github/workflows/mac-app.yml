@@ -17,6 +17,8 @@ jobs:
     runs-on: macos-15
     steps:
       - uses: actions/checkout@v4
+      - name: Tests (Swift Queen server, Phase A)
+        run: ./mac_app/test.sh
       - name: Build
         run: SIGN=- NO_INSTALL=1 ./mac_app/build.sh
       - name: Pack

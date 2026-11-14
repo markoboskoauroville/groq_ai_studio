@@ -9,7 +9,10 @@ NAME="Groq Queen AI Studio (Mantra)"
 DISPLAY="Groq/Queen AI Studio (Mantra)"
 APP="build/$NAME.app"
 rm -rf "$APP"; mkdir -p "$APP/Contents/MacOS" "$APP/Contents/Resources"
-swiftc -O -swift-version 5 -parse-as-library -o "$APP/Contents/MacOS/GroqAIStudio" app/*.swift
+swiftc -O -swift-version 5 -parse-as-library -o "$APP/Contents/MacOS/GroqAIStudio" app/*.swift app/core/*.swift
+# Phase A: Queen's system prompt comes from app.py (helper in the bundle, run on the installed app.py; this copy is the fallback)
+python3 tools/gen_prompt.py ../qwen_app/app.py > "$APP/Contents/Resources/queen_prompt.json"
+cp tools/gen_prompt.py "$APP/Contents/Resources/gen_prompt.py"
 swiftc -O -swift-version 5 -o "$APP/Contents/MacOS/axread" axread/main.swift
 [ -x "$APP/Contents/MacOS/GroqAIStudio" ] && [ -x "$APP/Contents/MacOS/axread" ] || { echo "the app did not build"; exit 1; }
 cat > "$APP/Contents/Info.plist" <<PL

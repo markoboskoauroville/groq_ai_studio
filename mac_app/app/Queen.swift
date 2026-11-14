@@ -1,6 +1,5 @@
-// Queen.swift: the window's line to Queen, the Python server of Groq AI Studio on 127.0.0.1:8765 (~/.groq).
-// The server stays the brain (keys, skills, routes, chats); this app is its native face (Marko, 14.11.2026: "now it is
-// time to convert our Grok AI Studio into a Swift app"). Down at start: started the way `qwen` starts it.
+// Queen.swift: the window's line to Queen on 127.0.0.1:8765. Since v5 (Phase A) that server is this same app
+// (QueenHost / QueenServer); the window still talks to it over HTTP like every other caller, so it sees what they see.
 import Foundation
 import AppKit
 
@@ -32,8 +31,8 @@ final class Queen: ObservableObject {
     @Published var chatId = Queen.newId()
     @Published var busy = false
     @Published var starting = false
+    @Published var backend = true
 
-    private var startedPid: Int = 0
     private var task: Task<Void, Never>?
     private var timer: Timer?
     private let home = FileManager.default.homeDirectoryForCurrentUser.path
@@ -43,14 +42,8 @@ final class Queen: ObservableObject {
 
     static func newId() -> String { "s_" + String(Int(Date().timeIntervalSince1970 * 1000)) }
 
-    var base: String {
-        let f = home + "/.groq/app_url"
-        if let s = try? String(contentsOfFile: f, encoding: .utf8) {
-            let t = s.trimmingCharacters(in: .whitespacesAndNewlines)
-            if t.hasPrefix("http://127.0.0.1") || t.hasPrefix("http://localhost") { return t }
-        }
-        return "http://127.0.0.1:8765"
-    }
+    /// Queen's address is fixed since Phase A: this app serves it.
+    var base: String { "http://127.0.0.1:8765" }
 
     private var token: String {
         ((try? String(contentsOfFile: home + "/.groq/api_token", encoding: .utf8)) ?? "")
@@ -83,8 +76,8 @@ final class Queen: ObservableObject {
     func start() {
         linkAxread()
         Task { @MainActor in
+            try? await Task.sleep(nanoseconds: 600_000_000)     // the server binds 8765 first
             await self.refresh()
-            if !self.up { self.startServer() }
             await self.loadChats()
         }
         timer = Timer.scheduledTimer(withTimeInterval: 5, repeats: true) { [weak self] _ in
@@ -118,6 +111,7 @@ final class Queen: ObservableObject {
             model = (s["model"] as? String) ?? ""
             keys = (s["keys"] as? Int) ?? 0
             cooling = (s["cooling"] as? Int) ?? 0
+            backend = ((s["backend"] as? [String: Any])?["up"] as? Bool) ?? true
             spent = (s["total_spent"] as? Double) ?? Double("\(s["total_spent"] ?? 0)") ?? 0
             line = "running"
         } else if let h = await json("/health", timeout: 4), (h["ok"] as? Bool) == true {
@@ -129,46 +123,23 @@ final class Queen: ObservableObject {
             line = "running"
         } else {
             up = false
-            line = starting ? "starting" : "not running"
+            line = starting ? "starting" : QueenHost.shared.line
         }
     }
 
-    /// The same command `qwen` runs (~/.groq/qwen), detached, keyboard on /dev/null, no browser tab, no Claude session variables.
+    /// START QUEEN: her backend (the Python server on 8766) is started again by the host.
     func startServer() {
-        let qwen = home + "/.groq/qwen"
-        guard FileManager.default.isExecutableFile(atPath: qwen) else {
-            line = "not installed (~/.groq/qwen missing: run install.sh in groq_ai_studio)"
-            return
-        }
         starting = true
         line = "starting"
-        let log = home + "/.groq/qwen_app.log"
-        let p = Process()
-        p.executableURL = URL(fileURLWithPath: "/bin/sh")
-        p.arguments = ["-c", "nohup \"$0\" < /dev/null >> \"$1\" 2>&1 & echo $!", qwen, log]
-        var env = ProcessInfo.processInfo.environment
-        for k in env.keys where k.hasPrefix("CLAUDE") { env.removeValue(forKey: k) }
-        env["QWEN_NO_BROWSER"] = "1"
-        env["PATH"] = home + "/.groq:" + home + "/.local/bin:/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin"
-        p.environment = env
-        let out = Pipe()
-        p.standardOutput = out
-        p.standardError = FileHandle.nullDevice
-        p.standardInput = FileHandle.nullDevice
-        do {
-            try p.run()
-            p.waitUntilExit()
-            let s = String(decoding: out.fileHandleForReading.readDataToEndOfFile(), as: UTF8.self)
-            startedPid = Int(s.trimmingCharacters(in: .whitespacesAndNewlines)) ?? 0
-        } catch {
-            starting = false
-            line = "could not start: \(error.localizedDescription)"
+        DispatchQueue.global().async {
+            QueenHost.shared.restartBackend()
+            DispatchQueue.main.asyncAfter(deadline: .now() + 6) { self.starting = false }
         }
     }
 
-    /// OFF: what this app started is stopped (a Queen started elsewhere keeps running for the other sessions).
+    /// OFF: Queen stops (her server here and the backend this app started).
     func stopIfOurs() {
-        if startedPid > 0 { kill(pid_t(startedPid), SIGTERM) }
+        QueenHost.shared.stop()
     }
 
     // ---------------------------------------------------------------- chats

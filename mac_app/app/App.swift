@@ -1,4 +1,5 @@
-// Groq/Queen AI Studio (Mantra): the native Mac face of Queen (Groq AI Studio, the Python server in ~/.groq on 127.0.0.1:8765).
+// Groq/Queen AI Studio (Mantra): Queen herself on the Mac. Since v5 (Phase A, 14.11.2026) this app serves 127.0.0.1:8765
+// (core/QueenServer.swift) and starts the Python server as its internal backend on 8766 for the routes not moved yet.
 // Marko, 14.11.2026: "now it is time to convert our Grok AI Studio into a Swift app. Please do that and upgrade it with new
 // skills for accessibility". Swift only, no web view (MANTRA_MANIFEST swift-apps.md); compiled only by GitHub (build.yml).
 // The window: the house top row (ON OFF · name · TOP PERMISSIONS ✕), Queen's status line, the conversation, one input and
@@ -7,7 +8,7 @@ import SwiftUI
 import AppKit
 import ApplicationServices
 
-let VERSION = 4
+let VERSION = 5
 let APP_NAME = "Groq/Queen AI Studio (Mantra)"
 
 enum Ink {
@@ -111,7 +112,7 @@ struct TopRow: View {
             HStack(spacing: 6) {
                 Spacer().frame(width: 64)                   // the traffic lights
                 Text("ON").foregroundStyle(Ink.green).padding(.horizontal, 6)
-                Word(text: "OFF", id: "off", color: Ink.grey, help: "Quit; a Queen this app started is stopped too") {
+                Word(text: "OFF", id: "off", color: Ink.grey, help: "Quit Queen: her server on 8765 and her backend on 8766 stop") {
                     Queen.shared.stopIfOurs()
                     DispatchQueue.main.async { NSApp.terminate(nil) }
                 }
@@ -157,8 +158,8 @@ struct StatusLine: View {
                 .fixedSize(horizontal: false, vertical: true)
                 .textSelection(.enabled)
             Spacer(minLength: 8)
-            if !q.up && !q.starting {
-                Word(text: "START QUEEN", id: "start-queen", color: Ink.amber, help: "Start the Groq AI Studio server (~/.groq/qwen)") {
+            if (!q.up || !q.backend) && !q.starting {
+                Word(text: "START QUEEN", id: "start-queen", color: Ink.amber, help: "Start Queen's backend again (~/.groq/qwen on 8766)") {
                     q.startServer()
                 }
             }
@@ -178,6 +179,7 @@ struct StatusLine: View {
         if !q.model.isEmpty { parts.append(q.model) }
         parts.append("keys \(q.keys)" + (q.cooling > 0 ? " (\(q.cooling) cooling)" : ""))
         parts.append(String(format: "spent $%.4f", q.spent))
+        if !q.backend { parts.append("backend 8766 down") }
         return parts.joined(separator: "  ·  ")
     }
 }
@@ -325,6 +327,7 @@ struct Root: View {
 final class Delegate: NSObject, NSApplicationDelegate {
     func applicationDidFinishLaunching(_ n: Notification) {
         NSApp.appearance = NSAppearance(named: .darkAqua)
+        QueenHost.shared.start(appVersion: VERSION)     // Phase A: Queen's server is this app (8765), Python is its backend (8766)
         Queen.shared.start()
         DispatchQueue.main.async {
             for w in NSApp.windows where w.title.hasPrefix("Groq/Queen AI Studio") { w.setFrameAutosaveName("GroqAIStudioMain") }
