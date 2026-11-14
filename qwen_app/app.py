@@ -8,7 +8,7 @@ Features:
 - Full SSE Streaming /api/chat & Backdoor /api/remote/send
 - Dynamic Port Allocation (checks busy ports, binds first free)
 - Live Groq API Spend Ledger & Token Tracking
-- Raw Terminal Keyboard Controls ('q' to quit, 'c' for browser)
+- Raw Terminal Keyboard Controls ('q' to quit, 'c' opens the Swift app)
 - Self-Update Payload Dispatcher (chunked code updates to work around token limits)
 """
 import base64
@@ -3533,8 +3533,9 @@ def raw_keyboard_listener(server, url):
                     print("\r\n\033[1;31m[q pressed] Quitting Groq Chat server cleanly...\033[0m")
                     break
                 elif ch in ('c', 'C', 'o', 'O'):
-                    print(f"\r\n\033[1;36m[c pressed] Kicking in browser with {url}...\033[0m")
-                    webbrowser.open(url)
+                    # 14.11.2026 (Marko: "remove Flask Queen, keep only Swift Queen"): 'c' opens the Swift app, not a tab.
+                    print("\r\n\033[1;36m[c pressed] Opening Groq Queen AI Studio (Mantra)...\033[0m")
+                    open_swift_queen()
                 elif ch in ('g', 'G'):
                     print("\r\n\033[1;35m[GitHub] Reading repositories...\033[0m")
                     ok, out = run_gh(["repo", "list", "--limit", "5"])
@@ -3552,9 +3553,21 @@ def raw_keyboard_listener(server, url):
                 elif ch in ('t', 'T'):
                     run_live_selftest()
                 elif ch in ('h', '?', '\r', '\n'):
-                    print("\r\n\033[1m[Controls]\033[0m \033[1;31m'q'\033[0m: quit | \033[1;36m'c'\033[0m: browser | \033[1;35m'g'\033[0m: github | \033[1;32m's'\033[0m: spend | \033[1;33m'r'\033[0m: reset | \033[1;35m't'\033[0m: live test")
+                    print("\r\n\033[1m[Controls]\033[0m \033[1;31m'q'\033[0m: quit | \033[1;36m'c'\033[0m: Swift app | \033[1;35m'g'\033[0m: github | \033[1;32m's'\033[0m: spend | \033[1;33m'r'\033[0m: reset | \033[1;35m't'\033[0m: live test")
     finally:
         termios.tcsetattr(fd, termios.TCSADRAIN, old_settings)
+
+SWIFT_QUEEN_APP = "/Applications/Groq Queen AI Studio (Mantra).app"
+
+
+def open_swift_queen():
+    """The only face of Queen since 14.11.2026: the Swift app. Only on a key press, never at a server start."""
+    try:
+        subprocess.Popen(["open", SWIFT_QUEEN_APP], stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL,
+                         stderr=subprocess.DEVNULL)
+    except Exception as exc:
+        print(f"[swift app] could not open {SWIFT_QUEEN_APP}: {exc}", flush=True)
+
 
 def main():
     requested_port = int(sys.argv[1]) if len(sys.argv) > 1 else DEFAULT_PORT
@@ -3612,22 +3625,25 @@ def main():
         except Exception:
             pass
 
-    # QWEN_NO_BROWSER=1 for a restart from a script: every restart used to open ANOTHER tab, and each tab holds a
-    # thread on /api/events, which is how the server came to be starved (12.11.2026).
-    if os.environ.get("QWEN_NO_BROWSER") not in ("1", "true", "yes"):
+    # 14.11.2026, Marko: "please remove Flask Queen, keep only Swift Queen". The face of Queen is the Swift app
+    # Groq Queen AI Studio (Mantra); this server is only its backend and the HTTP API (queen CLI, /api/*). The old web
+    # page at / is no longer opened by anything; it stays served only as a hidden fallback for the panels the Swift app
+    # does not have yet (keys import, auto-update studio, star/voice/elevate modals). QWEN_BROWSER=1 opens it on purpose.
+    # (QWEN_NO_BROWSER is still accepted and changes nothing: no tab is the default now.)
+    if os.environ.get("QWEN_BROWSER") in ("1", "true", "yes"):
         threading.Thread(target=kick_in_browser, daemon=True).start()
 
     print("\033[1;36m" + "=" * 74 + "\033[0m")
     print(f"\033[1;32m  Groq Modern AI Studio & Chatbot — Version {VERSION} is LIVE\033[0m")
     if port != requested_port:
         print(f"\033[1;33m  Notice:\033[0m Port {requested_port} was busy. Bound to first free port: \033[1;32m{port}\033[0m")
-    print(f"\033[1m  URL:\033[0m \033[4;34m{url}\033[0m (kicking in browser)")
+    print(f"\033[1m  URL:\033[0m \033[4;34m{url}\033[0m (API only; the window is the Swift app Groq Queen AI Studio (Mantra))")
     key_info = f"\033[1;32m{len(pool.keys)} key(s) in Key Manager\033[0m" if pool.keys else "\033[1;33mNo keys configured (click '📥 Import Keys')\033[0m"
     print(f"\033[1m  Key Manager:\033[0m {key_info}")
     print(f"\033[1;35m  Back Door:\033[0m POST {url}/api/remote/send | POST {url}/api/test/live | POST {url}/api/terminal/log")
     print(f"\033[1;33m  Raw keyboard controls in this terminal:\033[0m")
     print(f"    • Press \033[1;31m'q'\033[0m to quit the server cleanly")
-    print(f"    • Press \033[1;36m'c'\033[0m to kick in browser with this page")
+    print(f"    • Press \033[1;36m'c'\033[0m to open the Swift app Groq Queen AI Studio (Mantra)")
     print(f"    • Press \033[1;35m'g'\033[0m to inspect GitHub repositories")
     print(f"    • Press \033[1;32m's'\033[0m to show spend & billing stats")
     print(f"    • Press \033[1;35m't'\033[0m to run the live visible self-test suite")
