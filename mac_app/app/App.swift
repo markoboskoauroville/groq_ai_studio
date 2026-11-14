@@ -1,4 +1,4 @@
-// Groq AI Studio (Mantra): the native Mac face of Queen (Groq AI Studio, the Python server in ~/.groq on 127.0.0.1:8765).
+// Groq/Queen AI Studio (Mantra): the native Mac face of Queen (Groq AI Studio, the Python server in ~/.groq on 127.0.0.1:8765).
 // Marko, 14.11.2026: "now it is time to convert our Grok AI Studio into a Swift app. Please do that and upgrade it with new
 // skills for accessibility". Swift only, no web view (MANTRA_MANIFEST swift-apps.md); compiled only by GitHub (build.yml).
 // The window: the house top row (ON OFF · name · TOP PERMISSIONS ✕), Queen's status line, the conversation, one input and
@@ -7,8 +7,8 @@ import SwiftUI
 import AppKit
 import ApplicationServices
 
-let VERSION = 2
-let APP_NAME = "Groq AI Studio (Mantra)"
+let VERSION = 3
+let APP_NAME = "Groq/Queen AI Studio (Mantra)"
 
 enum Ink {
     static let bg = Color(red: 0.07, green: 0.07, blue: 0.08)
@@ -105,7 +105,7 @@ struct TopRow: View {
     @AppStorage("onTop") private var onTop = false
     var body: some View {
         ZStack {
-            (Text("Groq AI Studio").fontWeight(.bold) + Text(" (Mantra)").fontWeight(.regular))
+            (Text("Groq/Queen AI Studio").fontWeight(.bold) + Text(" (Mantra)").fontWeight(.regular))
                 .font(.system(size: 15)).foregroundStyle(Ink.text)
                 .lineLimit(1)
             HStack(spacing: 6) {
@@ -122,7 +122,7 @@ struct TopRow: View {
                 }
                 if !perms.missing.isEmpty {
                     Word(text: "PERMISSIONS", id: "permissions", color: Ink.amber,
-                         help: "Accessibility is not allowed yet: a click opens its page in System Settings; switch Groq AI Studio (Mantra) on there") {
+                         help: "Accessibility is not allowed yet: a click opens its page in System Settings; switch Groq/Queen AI Studio (Mantra) on there") {
                         Permissions.openMissing()
                     }
                 }
@@ -139,7 +139,7 @@ struct TopRow: View {
     }
 
     static func float(_ on: Bool) {
-        for w in NSApp.windows where w.title.hasPrefix("Groq AI Studio") || w.identifier?.rawValue == "main" {
+        for w in NSApp.windows where w.title.hasPrefix("Groq/Queen AI Studio") || w.identifier?.rawValue == "main" {
             w.level = on ? .floating : .normal
         }
     }
@@ -327,7 +327,7 @@ final class Delegate: NSObject, NSApplicationDelegate {
         NSApp.appearance = NSAppearance(named: .darkAqua)
         Queen.shared.start()
         DispatchQueue.main.async {
-            for w in NSApp.windows where w.title.hasPrefix("Groq AI Studio") { w.setFrameAutosaveName("GroqAIStudioMain") }
+            for w in NSApp.windows where w.title.hasPrefix("Groq/Queen AI Studio") { w.setFrameAutosaveName("GroqAIStudioMain") }
         }
         Updater.checkAtStart()
     }

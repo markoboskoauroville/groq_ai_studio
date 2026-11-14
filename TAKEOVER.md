@@ -2,7 +2,7 @@
 
 **14.11.2026, Mac: the Swift app and Accessibility.** Marko: "now it is time to convert our Grok AI Studio into a Swift app ... upgrade it
 with new skills for accessibility ... check my last 5 WhatsApp messages ... who sent them and what was not responded to. Without taking
-screenshots". (1) **Groq AI Studio (Mantra)**, `mac_app/` (SwiftUI, no web view): the face of this server (status line from the new cheap
+screenshots". (1) **Groq/Queen AI Studio (Mantra)**, `mac_app/` (SwiftUI, no web view): the face of this server (status line from the new cheap
 `GET /api/app/status`, chat over `/api/chat` streamed, chats from `/api/chats`, CHATS / NEW CHAT, SEND|STOP, top row ON OFF TOP PERMISSIONS ✕,
 updater at start, `let VERSION` in mac_app/app/App.swift). Down at start: the app runs `~/.groq/qwen` detached (QWEN_NO_BROWSER=1, no
 CLAUDE* vars); OFF stops only a Queen it started. Compiled ONLY by GitHub: `.github/workflows/mac-app.yml` (paths mac_app/**), release vN

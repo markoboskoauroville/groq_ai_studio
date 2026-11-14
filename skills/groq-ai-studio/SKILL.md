@@ -137,7 +137,7 @@ Chrome only through cdp_broker.py (127.0.0.1:9333, one connection); draw only on
 Run log: 13.11.2026 renames, two books, eleven teaching rounds, see LESSONS.md.
 
 ## 14.11.2026: the Swift app + Accessibility
-Groq AI Studio (Mantra) = `mac_app/` in this repo (SwiftUI face of the server; GitHub builds it with `.github/workflows/mac-app.yml`,
+Groq/Queen AI Studio (Mantra) = `mac_app/` in this repo (SwiftUI face of the server; GitHub builds it with `.github/workflows/mac-app.yml`,
 release vN Latest here; install `mac_app/install.sh`; never compile on the Mac). `axread` (Swift, in the bundle, ~/.local/bin/axread) reads
 any app's Accessibility tree as JSON; Queen: `POST /api/ax/read`, chat `ax read <App> [for <words>]`; WhatsApp: `POST /api/whatsapp/ax/latest`,
 chat "check my last 5 WhatsApp messages" (who wrote, NOT answered; no screenshot). Skills accessibility.md, whatsapp-accessibility.md.

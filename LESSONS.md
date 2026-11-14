@@ -182,3 +182,5 @@
 - A private code repo cannot build on GitHub (billing): the Mac app went into this public repo (mac_app/, its own workflow with a paths filter).
 - The Swift app was tested through Accessibility too: axread on the app's own window, AXValue set on the field, AXPress on Send.
 
+
+- 14.11.2026 (v3): renamed to Groq/Queen AI Studio (Mantra). A '/' cannot be in a file name, so the bundle is `Groq Queen AI Studio (Mantra).app` and CFBundleName/DisplayName, window title and APP_NAME carry the slash. Bundle id community.auroville.groqaistudio kept (permissions, updater). The updater finds the asset `app.zip` and the bundle by the running bundle's file name, so v1/v2 (old file name) cannot self-update to v3: install by hand once. The leftover repo GROQ_AI_STUDIO_MAC is kept on GitHub, unused; its local folder was deleted.

@@ -118,3 +118,7 @@ Status: DONE 14.11.2026: Groq AI Studio (Mantra) v1 (mac_app/, built by GitHub m
 Apps), v2 pushed (version badge fix, the updater asks at start); axread; routes /api/ax/read + /api/whatsapp/ax/latest; skills
 accessibility.md + whatsapp-accessibility.md; test "check my last 5 WhatsApp messages" answered in her chat from Accessibility, cross-checked,
 no screenshot file made. Open: Marko switches Accessibility on for Groq AI Studio (Mantra) (PERMISSIONS) for when the app starts Queen.
+
+
+Marko, 14.11.2026 (word for word, dictated): "Yes. Delete the flask. Actually, delete it from the system. Yes. Delete it. And, but keep the repository on GitHub. And rename Groq I Studio Mac. Actually, re... Rename the app in Groq slash Queen AI Studio."
+Status: DONE 14.11.2026: local folder ~/Developer/GROQ_AI_STUDIO_MAC deleted (repo kept on GitHub); app renamed Groq/Queen AI Studio (Mantra) v3, bundle file "Groq Queen AI Studio (Mantra).app".

@@ -634,7 +634,7 @@ except Exception as _ax_exc:
 
 @app.get("/api/app/status")
 def app_status():
-    """One cheap line for the Swift app (Groq AI Studio (Mantra)): no network call, ledger and pool only (14.11.2026)."""
+    """One cheap line for the Swift app (Groq/Queen AI Studio (Mantra)): no network call, ledger and pool only (14.11.2026)."""
     ledger = load_ledger()
     try:
         items = pool.status_rich()
