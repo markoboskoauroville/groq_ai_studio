@@ -70,6 +70,29 @@ def _skills():
 
 
 # ------------------------------------------------------------------ 1. Queen plans
+LESSON_LINE = re.compile(r'\(Marko: "(.*?)"; Queen .*? -> Claude (\{.*\})\)\s*$')
+
+
+def _norm(t):
+    return re.sub(r"\s+", " ", t.strip().lower().strip(".!?"))
+
+
+def plan_by_lessons(text):
+    """What Claude taught her: the same words are planned the way Claude corrected them (newest lesson wins)."""
+    p = SKILLS / LESSONS
+    if not p.exists():
+        return None
+    found = None
+    for line in p.read_text(encoding="utf-8").splitlines():
+        m = LESSON_LINE.search(line)
+        if m and _norm(m.group(1)) == _norm(text[:120]):
+            try:
+                found = json.loads(m.group(2))
+            except Exception:
+                pass
+    return found if found and found.get("action") in ACTIONS and found.get("action") not in ("draft", "photo_draft") else None
+
+
 def plan_by_queen_rules(text):
     t = text.strip()
     m = READ.match(t) if re.match(r"^(?:please\s+)?(read|pročitaj|procitaj)\b", t, re.I) else None
@@ -167,6 +190,14 @@ def add_lesson(lesson, text, queen_plan, final_plan):
     targets = [SKILLS / LESSONS]
     if (REPO / ".git").exists() and (REPO / "queen_skills").resolve() != SKILLS.resolve():
         targets.append(REPO / "queen_skills" / LESSONS)
+    key = (_norm(text[:120]), json.dumps(final_plan, sort_keys=True))
+    for l in (SKILLS / LESSONS).read_text(encoding="utf-8").splitlines() if (SKILLS / LESSONS).exists() else []:
+        m = LESSON_LINE.search(l)
+        try:
+            if m and (_norm(m.group(1)), json.dumps(json.loads(m.group(2)), sort_keys=True)) == key:
+                return None                        # already learned (two phones asked the same at once)
+        except Exception:
+            pass
     for p in targets:
         p.parent.mkdir(parents=True, exist_ok=True)
         if not p.exists():
@@ -236,8 +267,9 @@ def supervised(text, conv_id, pick=""):
                     "assessment": {"verdict": "ok", "why": "Marko picked the chat himself.", "lesson": ""},
                     "action": plan["action"], "chat": res.get("chat", ""), "draft": res.get("draft"),
                     "choices": res.get("choices") or [], "shot": True, "queen_plan": plan, "understood": "his pick"}
-    queen_plan, how = plan_by_queen_rules(text), "her rules"
-    why_none = ""
+    queen_plan, how = plan_by_lessons(text), "her lessons"
+    if not queen_plan:
+        queen_plan, how = plan_by_queen_rules(text), "her rules"
     if not queen_plan:
         queen_plan, why_none = plan_by_queen_model(text, conv)
         how = "her model" if queen_plan else f"nobody ({why_none})"
