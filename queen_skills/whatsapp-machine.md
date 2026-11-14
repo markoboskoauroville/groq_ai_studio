@@ -19,7 +19,15 @@ Chat commands (answered by your code, no model, free):
 4. `whatsapp: <his words>` -> the same planner and hands as the Mac's WhatsApp remote (skill whatsapp-remote): shot, open a chat,
    scroll, draft, chats. The hands are ~/Developer/claude-code/tools/wa_remote.py with FIREFOXCTL_PORT=9223.
 
-Linking (only Marko can do it, with his phone): state "qr" -> tell him: on the phone, WhatsApp > Settings > Linked devices >
+Linking by PHONE NUMBER (Marko, 14.11.2026: "I cannot log in with QR code through this interface ... enter my phone number and
+my country and press Next"): chat command `log in with my phone number` (optionally followed by +<country code> <number>) runs
+`vm-whatsapp phone-login`: opens "Log in with phone number" if the QR page is shown, types the number with its + country code
+(WhatsApp then picks the country itself; the page defaulted to Germany), reads the box back, presses Next with a real click, and
+reads the 8-character link code. Tell Marko the code and the path on his phone: WhatsApp > Settings > Linked devices > Link a device
+> "Link with phone number instead" > type the code. His number lives only on the VM (~/.config/chromium-vm/whatsapp-phone), never
+in a repo or a chat. The code expires after a few minutes: if he is late, run the command again.
+
+Linking by QR (only Marko can do it, with his phone): state "qr" -> tell him: on the phone, WhatsApp > Settings > Linked devices >
 Link a device, scan the code on the VM screen. Then check with `whatsapp status`; say "linked" only when the status says so.
 
 Rules:

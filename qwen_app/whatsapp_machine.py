@@ -8,6 +8,7 @@ Chat commands, answered locally (no model, no cost), only where QUEEN_LOCATION=v
     open whatsapp | open firefox | open the whatsapp machine | start whatsapp | otvori whatsapp
         -> `vm-whatsapp start`: Firefox with remote control (BiDi 127.0.0.1:9223), WhatsApp Web, in front and full;
            the answer says linked (chats there) or QR (Marko scans it with his phone: WhatsApp -> Linked devices)
+    log in with my phone number [+385 ...]             -> `vm-whatsapp phone-login`: number + country, Next, the 8-character code
     whatsapp status | is whatsapp linked                -> `vm-whatsapp status`
     whatsapp qr                                          -> a picture of the QR code in ~/Pictures/<date> WhatsApp/
     whatsapp: <anything>  /  whatsapp <anything>         -> the same planner and hands as the Mac's WhatsApp remote
@@ -26,6 +27,8 @@ OPEN = re.compile(r"^\s*(?:please\s+)?(?:open|start|launch|run|otvori|pokreni)\s
                   r"(?:\s+(?:machine|web|in firefox|browser))?\s*[.!]?\s*$", re.I)
 STATUS = re.compile(r"^\s*(?:whatsapp\s+status|is\s+(?:my\s+)?whatsapp\s+(?:linked|connected|on|running)\??)\s*$", re.I)
 QR = re.compile(r"^\s*(?:show\s+(?:me\s+)?)?(?:the\s+)?whatsapp\s+qr(?:\s+code)?\s*$", re.I)
+PHONE = re.compile(r"^\s*(?:please\s+)?(?:whatsapp\s+)?(?:log\s*in|login|link|sign\s*in)(?:\s+(?:to\s+)?whatsapp)?\s+(?:with|by|using)\s+(?:my\s+)?(?:phone(?:\s+number)?|number)"
+                   r"(?:\s+(\+[\d\s]{8,}))?\s*[.!]?\s*$", re.I)
 ASK = re.compile(r"^\s*(?:whatsapp|wa)\s*[:,\-]?\s+(.+)$", re.I | re.S)
 
 
@@ -64,6 +67,14 @@ def chat_whatsapp_machine_command(text):
         s = json.loads(_run("start"))
         ok = s.get("bidi") and s.get("window")
         return ("Checked: Firefox running, remote control on 9223, window in front. " if ok else "Check FAILED: ") + _state_words(s)
+    m = PHONE.match(t)
+    if m:   # 14.11.2026 (Marko: "enter my phone number and my country and press Next"): number from the VM file unless given
+        r = json.loads(_run("phone-login", *([m.group(1).strip()] if m.group(1) else []), timeout=90))
+        if r.get("code"):
+            return (f"Checked: number typed, country {r.get('country')}, Next pressed. WhatsApp's link code is {r['code']}. "
+                    "On your phone: WhatsApp, Settings, Linked devices, Link a device, then 'Link with phone number instead', "
+                    f"and type {r['code']}. Then say \"whatsapp status\".")
+        return f"Next pressed (country {r.get('country')}), but I could not read a link code. The page says: {r.get('page', '')[:300]}"
     if STATUS.match(t):
         return _state_words(json.loads(_run("status", timeout=40)))
     if QR.match(t):
