@@ -19,3 +19,6 @@ verbatim, UNSENT, read back.
 Never send: no plan ever sends. Only the app's SEND button sends, through `/send` -> `POST /api/whatsapp/send {chat, text}`
 with the exact text the app shows, in the chat shown (wa_remote refuses anything else). Enter is never pressed in a box.
 Several chats match: return the choices, never guess.
+Calls ("call Svemir", "answer", "hang up"): NOT possible yet (tested 14.11.2026). WhatsApp Web turns calling on per account
+(server flag enable_web_calling, off for Marko); no browser setting changes it. Say so plainly, plan nothing, and offer to
+open the chat instead. The microphone path is ready on the VM (null sink wamic) for the day the flag is on.

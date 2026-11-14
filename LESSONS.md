@@ -1,5 +1,7 @@
 # Groq AI Studio: lessons
 
+14.11.2026: THE WHATSAPP DOOR. (1) Rules alone planned "show me the last messages from Svemir" as a screenshot; Claude corrected it to read {chat}, and the lesson now plans it right first (plan_by_lessons), with no duplicate lessons when two phones ask at once. (2) wa_remote's span[title] matched message previews too, so "Svemir" gave nine choices: chat titles are [data-testid=cell-frame-title] only. (3) An open Archived panel covered the search box and a click opened a wrong chat: the box must really be visible (Escape closes a panel) and a wrong header stops. (4) A door started Firefox inside its own cgroup, so restarting the door killed WhatsApp: Firefox starts in its own systemd scope, KillMode=process. (5) vm-whatsapp opened two WhatsApp tabs (home page + URL), which fight ("open in another window"): one tab only. (6) WhatsApp Web calls: browser support can be met in Firefox (Chrome UA + COOP same-origin for SharedArrayBuffer) but calling is a per-account server flag (enable_web_calling); do not chase it with browser settings.
+
 13.11.2026: SPEAK WAS DEAD. The voice engine answers {"ok": true, ...}; six proxy routes did jsonify(ok=ok, **res), a duplicate
   keyword, so every Speak was a 500, and the page swallowed the error (its status sat in the Tools tab). Now {**res, "ok": ok}
   and a failed Speak shows a red message where Marko clicked.

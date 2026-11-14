@@ -1,5 +1,7 @@
 # Groq AI Studio: takeover
 
+**14.11.2026, VM: the WhatsApp door.** `POST /api/whatsapp/supervised {text, conv}` (qwen_app/whatsapp_supervised.py): Queen plans one action (her lessons, her rules, else her Groq model), the VM's local Claude Code (sonnet, 90 s) assesses {verdict, plan, why, lesson}, the plan runs through wa_remote (new `read`), a correction's lesson is appended to queen_skills/whatsapp-lessons.md and pushed from the VM. Claude unreachable = nothing runs. The phone app WhatsApp Remote Viewer (Mantra) reaches it through WHATSAPP_REMOTE_VIEWER/vm/wa_door.py (100.102.86.30:8879, systemd --user wa-door). Calls are not possible yet (WhatsApp server flag enable_web_calling off for the account). Skill queen_skills/whatsapp-supervised.md.
+
 **14.11.2026, VM:** the WhatsApp machine: Queen opens the VM's Firefox with remote control and WhatsApp (`open whatsapp`), reports linked/QR, and runs WhatsApp requests (`whatsapp: ...`) through wa_remote, drafts unsent. Skill queen_skills/whatsapp-machine.md, code qwen_app/whatsapp_machine.py. Waiting: Marko scans the QR code.
 
 ## 13.11.2026: the second location, Queen on the VM chromium-vm (MANTRA_MANIFEST modules/two-locations.md)
