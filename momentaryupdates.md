@@ -129,4 +129,4 @@ Status: DONE 14.11.2026: volume read back 10; built POST/GET /api/system/volume 
 
 
 Marko, 14.11.2026 (word for word): "please give Groq queen icon, as we always have icons"
-Status: IN PROGRESS 14.11.2026: default black six-letter icon GRO/QUE over cursorarrow (six-letter-icon.md), v4.
+Status: DONE 14.11.2026 (v4): default black six-letter icon GRO/QUE over cursorarrow (six-letter-icon.md), v4.

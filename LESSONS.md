@@ -187,3 +187,5 @@
 
 - 14.11.2026: asked to set the Mac volume, Queen invented an endpoint (/api/system/volume) that did not exist. A missing hand is built (route + local
   chat command + skill), and her answer is the read-back value, not the number requested. The output device is never changed.
+
+- 14.11.2026 (v4): the app shipped v1-v3 without an icon; no Swift app ships without its icon row + icon/six_1024.png + CFBundleIconFile (six-letter-icon.md). Render with icons6/six_icon.swift for ONE key only, then `git checkout icons6/out/sheet.png` (it overwrites the contact sheet with one icon).

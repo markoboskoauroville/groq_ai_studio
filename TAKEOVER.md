@@ -286,3 +286,5 @@ Queen must be started WITHOUT the CLAUDE* variables of a Claude session (env -u 
 `GET/POST /api/system/volume` ({percent 0-100 | change +-N | mute bool}; osascript set, then read back; device only named, never changed) and a local
 chat command (first in the local chain, darwin only, $0): "reduce the output volume to 10%", "volume 30", "mute", "how loud is it", Croatian "stisaj".
 Skill `queen_skills/system-volume.md`. Tested in her chat: volume read back 10, ADAM Audio D3V still default.
+
+**14.11.2026, v4: the icon.** Marko: "please give Groq queen icon, as we always have icons". Default look for an unpromoted app (six-letter-icon.md): black, GRO / QUE in white, a cursor arrow behind. Row `groqqueen` in STAR_SWIFT/icons6/icons.json (category Between Marko and Claude); the picture is `mac_app/icon/six_1024.png`; build.sh makes AppIcon.icns with sips + iconutil and sets CFBundleIconFile. Compiled only by GitHub (release v4).

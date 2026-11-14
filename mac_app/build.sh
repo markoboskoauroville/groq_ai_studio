@@ -27,7 +27,13 @@ cat > "$APP/Contents/Info.plist" <<PL
 <key>NSHighResolutionCapable</key><true/>
 </dict></plist>
 PL
-[ -f icon/AppIcon.icns ] && cp icon/AppIcon.icns "$APP/Contents/Resources/" && /usr/libexec/PlistBuddy -c "Add :CFBundleIconFile string AppIcon" "$APP/Contents/Info.plist" || true
+I=build/AppIcon.iconset; rm -rf $I; mkdir -p $I
+for s in 16 32 128 256 512; do
+  sips -z $s $s icon/six_1024.png --out $I/icon_${s}x${s}.png >/dev/null
+  sips -z $((s*2)) $((s*2)) icon/six_1024.png --out $I/icon_${s}x${s}@2x.png >/dev/null
+done
+iconutil -c icns $I -o "$APP/Contents/Resources/AppIcon.icns"
+/usr/libexec/PlistBuddy -c "Add :CFBundleIconFile string AppIcon" "$APP/Contents/Info.plist"
 codesign --force -s "${SIGN:-Mantra Apps}" "$APP/Contents/MacOS/axread"
 codesign --force -s "${SIGN:-Mantra Apps}" "$APP"
 echo "built $APP (v$V)"

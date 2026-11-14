@@ -1,0 +1,1 @@
+Icon (14.11.2026): default black six-letter icon, GRO / QUE over a cursor arrow. Made by STAR_SWIFT/icons6 (`swift six_icon.swift icons.json out groqqueen`), row `groqqueen` in category "Between Marko and Claude". build.sh turns six_1024.png into AppIcon.icns.
