@@ -128,3 +128,10 @@ start her WITHOUT a Claude session's CLAUDE* variables.
   remote debugging by Macro Recorder; supervisor approve/reject; one chat per task; web-photo (Kukljica panorama live); live
   screenshot-and-compare self-check; tabbed UI with the lightning full-screen.
 - 13.11.2026: VM Queen (two locations, same skills); screen reading; image-collect (grab mode zero cost, eyesheet/eyemark: Claude Code looks, never paid vision without Marko's OK; strict worship check; collage test in code; free stock hosts only); every paid call asks the Cost Agent gate (:9047, Speechify allowance $0.50/day to confirm); skills second-take-test (tools/rehearsal_test, read PASS/FAIL, still to be tested in her chat) and mpa-shooting corrections.
+
+## 13.11.2026 (Master session): Queen does the work, Claude teaches
+Hands (chat commands, every change supervised): open/quit app, rename app/repo, install latest, ship, deploy, make repo public,
+say on <phone>, book new/write/draw/build, add bowl. Names are hints (best_name, top 5). Tasks queue per repo. Her answer's command
+lines run (max 10). News line from ~/.groq/HANDOVER.md; data mirrored to groq_ai_studio_data; training events + datasets.
+Chrome only through cdp_broker.py (127.0.0.1:9333, one connection); draw only on the open profile. Tests gate install.sh.
+Run log: 13.11.2026 renames, two books, eleven teaching rounds, see LESSONS.md.

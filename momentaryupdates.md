@@ -104,3 +104,10 @@ Status: DONE 13.11.2026 (route /api/screen/look + chat command, skill read-scree
 
 13.11.2026, Marko (word for word): "now, please send another agent to work on this thing in a virtual machine. I want to have the same system as here. There is a Claude Code installed. Queen is not installed. Queen must be in the virtual machine, and everything I'm doing there must be executed with the Queen and Macro Recorder. Macro Recorder needs to be translated to Linux, exactly the same as here. When I'm going there in my virtual machine, I'm asking Claude Code to do two things: it has Macro Recorder, it has Queen, and any lessons or skills are written in the same repository as this computer is doing. It means we are in two locations. We are training Queen and Macro Recorder to be improved, and all this knowledge is coming to the common database for Macro Recorder and the Queen. Please do that and start working on my virtual machine in the background with an agent"
 Status: saved first; in progress (two locations: Mac + chromium-vm).
+
+**Status of the 13.11.2026 requests (closing, 14.11.2026):** done: Claude-teaches-only rule; Mantra Remote Viewing renames (Mac v30,
+Android v46, repo MANTRA_REMOTE_VIEWING); names by probability; news line + zoom in the tab line; private data repo; training
+record + dataset-v1; Hugging Face QLoRA workflow (training/hf, not yet run: needs ~100 examples, a GPU and an HF token);
+say-on-phone; one tab; Speak fixed; bandwidth savers (viewer v30, MPA classroom); AI for Beginners (12 chapters, 13 plates,
+bowl, live); bowl on Winning Film; Chrome through one permanent connection; the profile box closed by Macro Recorder.
+Open: Marko reads the book; HF token; an MPA class to see the snowflake; the keychain question for each new viewer build.
