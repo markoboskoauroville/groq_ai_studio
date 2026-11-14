@@ -924,8 +924,12 @@ def chat():
 
     # "open Affinity" / "close Affinity" and "tree|read|search|sync <repo>": answered locally, not by the model (no tokens, no cost).
     try:
-        from affinity_bridge import chat_app_command
-        local_answer = chat_app_command(last_user_text)
+        # 14.11.2026, VM only: "open whatsapp" / "whatsapp: <request>" -> the WhatsApp machine (the VM's Firefox)
+        from whatsapp_machine import chat_whatsapp_machine_command
+        local_answer = chat_whatsapp_machine_command(last_user_text)
+        if not local_answer:
+            from affinity_bridge import chat_app_command
+            local_answer = chat_app_command(last_user_text)
         if not local_answer:
             from rename_skill import chat_rename_command
             local_answer = chat_rename_command(last_user_text)
