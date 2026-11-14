@@ -7,7 +7,7 @@ import SwiftUI
 import AppKit
 import ApplicationServices
 
-let VERSION = 1
+let VERSION = 2
 let APP_NAME = "Groq AI Studio (Mantra)"
 
 enum Ink {

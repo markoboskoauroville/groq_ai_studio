@@ -114,4 +114,7 @@ Open: Marko reads the book; HF token; an MPA class to see the snowflake; the key
 
 14.11.2026, Marko (word for word): "now it is time to convert our Grok AI Studio into a Swift app. Please do that and upgrade it with new skills for accessibility, and test it like this: ask her to check my last 5 WhatsApp messages, and it needs to understand who sent them and what was not responded to. Without taking screenshots, it needs to use accessibility to get the text"
 Then: "WhatsApp, as always, we are using the Firefox browser with something we call remote control"
-Status: saved first; in progress (Opus worker).
+Status: DONE 14.11.2026: Groq AI Studio (Mantra) v1 (mac_app/, built by GitHub mac-app.yml, installed in /Applications, signed Mantra
+Apps), v2 pushed (version badge fix, the updater asks at start); axread; routes /api/ax/read + /api/whatsapp/ax/latest; skills
+accessibility.md + whatsapp-accessibility.md; test "check my last 5 WhatsApp messages" answered in her chat from Accessibility, cross-checked,
+no screenshot file made. Open: Marko switches Accessibility on for Groq AI Studio (Mantra) (PERMISSIONS) for when the app starts Queen.

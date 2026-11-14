@@ -9,3 +9,5 @@ Rules (Marko, 31.10.2026 and 13.11.2026):
 4. Keep his words verbatim in the draft, his language (Croatian stays Croatian).
 5. The live-stream picture (https://santoshi-band.pages.dev, the viewer at the top) is taken by `wa_remote live`; if the viewer frame is dark, say so, do not pretend it shows the band.
 6. Firefox allows one BiDi session at a time (other sessions use it): wait your turn, never kill Firefox.
+
+Reading (14.11.2026): "check my last N WhatsApp messages" / "what did I not answer" is whatsapp-accessibility.md (Accessibility text, no screenshot), not a shot.

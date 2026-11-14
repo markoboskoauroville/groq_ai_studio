@@ -622,6 +622,30 @@ try:
 except Exception as _ps_exc:
     print(f"[poster_skill] not loaded: {_ps_exc}")
 
+# 14.11.2026: Accessibility reading (ax_read: the Swift axread, else Python) and WhatsApp through it (no screenshot)
+try:
+    from ax_read import register as _register_ax
+    _register_ax(app)
+    from whatsapp_ax import register as _register_wa_ax
+    _register_wa_ax(app)
+except Exception as _ax_exc:
+    print(f"[ax] not loaded: {_ax_exc}")
+
+
+@app.get("/api/app/status")
+def app_status():
+    """One cheap line for the Swift app (Groq AI Studio (Mantra)): no network call, ledger and pool only (14.11.2026)."""
+    ledger = load_ledger()
+    try:
+        items = pool.status_rich()
+    except Exception:
+        items = []
+    cooling = sum(1 for i in items if isinstance(i, dict) and i.get("state_type") == "cooling")
+    return jsonify(ok=True, version=VERSION, model=DEFAULT_MODEL, keys=len(pool.keys), cooling=cooling,
+                   active_key=pool._mask(pool.keys[0]) if pool.keys else None,
+                   total_spent=round(ledger.get("total_spent", 0.0), 6), prompts=ledger.get("prompts_count", 0),
+                   location=os.environ.get("QUEEN_LOCATION", "mac"), pid=os.getpid())
+
 
 def _is_trusted_local_origin(hdr_url: str) -> bool:
     """Return True if Origin/Referer points to 127.0.0.1 or localhost."""
@@ -932,8 +956,17 @@ def chat():
     # "open Affinity" / "close Affinity" and "tree|read|search|sync <repo>": answered locally, not by the model (no tokens, no cost).
     try:
         # 14.11.2026, VM only: "open whatsapp" / "whatsapp: <request>" -> the WhatsApp machine (the VM's Firefox)
+        # 14.11.2026, Mac: "check my last 5 WhatsApp messages" -> read through Accessibility (whatsapp_ax), never a screenshot
+        local_answer = None
+        if sys.platform == "darwin":
+            from whatsapp_ax import chat_whatsapp_ax_command
+            local_answer = chat_whatsapp_ax_command(last_user_text)
         from whatsapp_machine import chat_whatsapp_machine_command
-        local_answer = chat_whatsapp_machine_command(last_user_text)
+        if not local_answer:
+            local_answer = chat_whatsapp_machine_command(last_user_text)
+        if not local_answer and sys.platform == "darwin":
+            from ax_read import chat_ax_command
+            local_answer = chat_ax_command(last_user_text)
         if not local_answer:
             from affinity_bridge import chat_app_command
             local_answer = chat_app_command(last_user_text)

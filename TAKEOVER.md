@@ -1,5 +1,24 @@
 # Groq AI Studio: takeover
 
+**14.11.2026, Mac: the Swift app and Accessibility.** Marko: "now it is time to convert our Grok AI Studio into a Swift app ... upgrade it
+with new skills for accessibility ... check my last 5 WhatsApp messages ... who sent them and what was not responded to. Without taking
+screenshots". (1) **Groq AI Studio (Mantra)**, `mac_app/` (SwiftUI, no web view): the face of this server (status line from the new cheap
+`GET /api/app/status`, chat over `/api/chat` streamed, chats from `/api/chats`, CHATS / NEW CHAT, SEND|STOP, top row ON OFF TOP PERMISSIONS ✕,
+updater at start, `let VERSION` in mac_app/app/App.swift). Down at start: the app runs `~/.groq/qwen` detached (QWEN_NO_BROWSER=1, no
+CLAUDE* vars); OFF stops only a Queen it started. Compiled ONLY by GitHub: `.github/workflows/mac-app.yml` (paths mac_app/**), release vN
+Latest in THIS repo (tags vN are the Mac app's, not version.json's). Install: `mac_app/install.sh [vN]` (gh release download, /Applications,
+"Mantra Apps", link ~/.local/bin/axread). Bundle community.auroville.groqaistudio. (2) **axread** (mac_app/axread/main.swift, in the app
+bundle): the AX tree of any app as JSON (`--app --window --depth --max --timeout --roles --frames --focused --text --query`, `--apps`,
+`--trusted`); sets AXManualAccessibility/AXEnhancedUserInterface so Firefox shows its page. (3) `qwen_app/ax_read.py`: `POST /api/ax/read`,
+chat `ax read <App> [for <words>]`; axread first, the same walk in Python (pyobjc, ApplicationServices loaded by hand) as fallback.
+(4) `qwen_app/whatsapp_ax.py`: `POST /api/whatsapp/ax/latest {n}`, chat "check my last 5 WhatsApp messages" / "who did I not answer on
+WhatsApp" / "provjeri zadnjih 3 poruke na whatsappu" (first in the local chain, Mac only): Firefox's AX table "Chat list" -> name, time,
+sender, unread, answered; sorted by time, group events left out. No screenshot, no click, nothing typed; the WhatsApp tab is only opened
+or selected over BiDi (9223) when the tree lacks it, and the front app is given back. Skills `queen_skills/accessibility.md`,
+`queen_skills/whatsapp-accessibility.md`. Permission: Accessibility belongs to whoever started Queen (iTerm2 now; the app when it starts
+her: its PERMISSIONS word). The private repo GROQ_AI_STUDIO_MAC was made first and could not build (private = billing block); the app
+lives here instead.
+
 **14.11.2026 (later), VM: WhatsApp Business on Pixel 2 is THE WhatsApp machine.** Marko: "it's better to open the WhatsApp Business inside the Android emulator, then inside the Firefox browser". The supervised route runs on ~/Developer/claude-code/tools/wa_android.py (chats, unread, open, read, draft never sent, clear) when Pixel 2 is linked, Firefox wa_remote only as the fallback (`machine` in the answer); calls (call/answer/hangup) run on the door. Skill queen_skills/whatsapp-android.md.
 
 **14.11.2026, VM: the WhatsApp door.** `POST /api/whatsapp/supervised {text, conv}` (qwen_app/whatsapp_supervised.py): Queen plans one action (her lessons, her rules, else her Groq model), the VM's local Claude Code (sonnet, 90 s) assesses {verdict, plan, why, lesson}, the plan runs through wa_remote (new `read`), a correction's lesson is appended to queen_skills/whatsapp-lessons.md and pushed from the VM. Claude unreachable = nothing runs. The phone app WhatsApp Remote Viewer (Mantra) reaches it through WHATSAPP_REMOTE_VIEWER/vm/wa_door.py (100.102.86.30:8879, systemd --user wa-door). Calls are not possible yet (WhatsApp server flag enable_web_calling off for the account). Skill queen_skills/whatsapp-supervised.md.

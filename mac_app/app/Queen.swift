@@ -38,6 +38,9 @@ final class Queen: ObservableObject {
     private var timer: Timer?
     private let home = FileManager.default.homeDirectoryForCurrentUser.path
 
+    /// "v5" -> "5" (the window writes the v itself)
+    static func bare(_ v: String) -> String { v.hasPrefix("v") ? String(v.dropFirst()) : v }
+
     static func newId() -> String { "s_" + String(Int(Date().timeIntervalSince1970 * 1000)) }
 
     var base: String {
@@ -111,7 +114,7 @@ final class Queen: ObservableObject {
         if let s = await json("/api/app/status", timeout: 4), (s["ok"] as? Bool) == true {
             up = true
             starting = false
-            version = "\(s["version"] ?? "")"
+            version = Queen.bare("\(s["version"] ?? "")")
             model = (s["model"] as? String) ?? ""
             keys = (s["keys"] as? Int) ?? 0
             cooling = (s["cooling"] as? Int) ?? 0
@@ -121,7 +124,7 @@ final class Queen: ObservableObject {
             // an older Queen without /api/app/status
             up = true
             starting = false
-            version = "\(h["version"] ?? "")"
+            version = Queen.bare("\(h["version"] ?? "")")
             model = (h["default_model"] as? String) ?? ""
             line = "running"
         } else {

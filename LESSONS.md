@@ -169,3 +169,16 @@
   from a closed Firefox too.
 - The hands on the VM are the Mac's: a sparse clone of claude-code (tools/wa_remote.py) and firefox-control (firefoxctl), both pulled by
   two_locations_sync.sh on Linux only. wa_remote used `sips`: now ImageMagick on Linux.
+
+## 14.11.2026: Accessibility instead of screenshots (Swift app + WhatsApp)
+- WhatsApp Web hides its ticks from Accessibility (`<span aria-hidden="true"><svg><title>wds-ic-read`): "the last message is Marko's" is
+  not a word in the tree. The icon still takes ~20 px, so the preview text starts ~20 px right of its group: that offset (AXPosition with
+  `frames`) is the tick. Checked against the DOM (BiDi, cross-check only): Yhshai (tick) yes, four incoming rows no tick, all right.
+- "You reacted 🙏 to: ..." is Marko's; "X reacted ..." is X's; groups put "~Name" ":" "text"; communities put the community name in a
+  separate group of the row (Udruga Ethno Hrvatska > Etno orkestar Zagreb) with the time: the first parse took the community group as the
+  preview and lost the time. Pinned chats sit at the top: sort by the time, never by the list order. The list is virtual: the same row can
+  appear twice (dedupe by name+time+text).
+- Firefox's AX tree has only windows on the current Space and only the selected tab; the web area's name is in AXDescription, not AXTitle.
+- A private code repo cannot build on GitHub (billing): the Mac app went into this public repo (mac_app/, its own workflow with a paths filter).
+- The Swift app was tested through Accessibility too: axread on the app's own window, AXValue set on the field, AXPress on Send.
+
