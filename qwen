@@ -1,8 +1,28 @@
 #!/usr/bin/env bash
+# qwen: starts Queen's Python server (~/.groq/qwen_app/app.py).
+# Phase A (14.11.2026): on the Mac, Queen is the Swift app Groq Queen AI Studio (Mantra). It serves 127.0.0.1:8765 itself
+# and starts THIS script as its internal backend (QWEN_BACKEND=1 GROQ_PORT=8766). So on the Mac a plain `qwen` opens the
+# Swift app instead of starting a second Queen on 8765. QWEN_STANDALONE=1 runs the old way (Python alone on 8765).
+# On Linux (the VM chromium-vm) nothing changed: Python alone on 8765.
 GROQ_DIR="${HOME}/.groq"
 PY="${GROQ_DIR}/venv/bin/python"
 APP="${GROQ_DIR}/qwen_app/app.py"
-PORT="${GROQ_PORT:-8765}"
+SWIFT_APP="/Applications/Groq Queen AI Studio (Mantra).app"
+
+if [[ "$(uname)" == "Darwin" && -z "${QWEN_BACKEND:-}" && -z "${QWEN_STANDALONE:-}" && -d "${SWIFT_APP}" ]]; then
+    if pgrep -f "${SWIFT_APP}/Contents/MacOS/GroqAIStudio" >/dev/null 2>&1; then
+        echo "Queen is running: the Swift app serves http://127.0.0.1:8765 (its backend is on 8766)."
+    else
+        open -g "${SWIFT_APP}" && echo "Queen started: the Swift app serves http://127.0.0.1:8765 (its backend is on 8766)."
+    fi
+    exit 0
+fi
+
+if [[ -n "${QWEN_BACKEND:-}" ]]; then
+    PORT="${GROQ_PORT:-8766}"
+else
+    PORT="${GROQ_PORT:-8765}"
+fi
 
 if [[ ! -x "${PY}" || ! -f "${APP}" ]]; then
     echo "Groq chat is not installed. Run 08-install_qwen.sh first." >&2

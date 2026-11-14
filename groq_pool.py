@@ -82,7 +82,22 @@ class DynamicKeyPool:
     def _mask(key: str) -> str:
         return f"{key[:6]}...{key[-4:]}" if len(key) >= 10 else key
 
+    def _keys_mtime(self) -> float:
+        try:
+            return KEYS_FILE.stat().st_mtime
+        except OSError:
+            return 0.0
+
+    def _sync(self):
+        """Phase A (14.11.2026): the Swift app's pool works on the same keys.txt and key_state.json. Read both from disk
+        before every decision, so a cooldown or a key written by the other side is seen and never overwritten."""
+        if self._keys_mtime() != getattr(self, "_mtime", None):
+            self.reload()
+        else:
+            self._load_state()
+
     def reload(self):
+        self._mtime = self._keys_mtime()
         keys: list[str] = []
         if KEYS_FILE.exists():
             try:
@@ -104,10 +119,12 @@ class DynamicKeyPool:
             tmp.write_text("\n".join(self.keys) + "\n" if self.keys else "", encoding="utf-8")
             os.chmod(tmp, 0o600)
             tmp.replace(KEYS_FILE)
+            self._mtime = self._keys_mtime()
         except Exception:
             pass
 
     def add_keys(self, new_keys: list[str]) -> tuple[int, int]:
+        self._sync()
         before = len(self.keys)
         valid_incoming = [k for k in new_keys if k.startswith("gsk_") and len(k) >= 20]
         self.keys = list(dict.fromkeys(self.keys + valid_incoming))
@@ -116,6 +133,7 @@ class DynamicKeyPool:
         return len(self.keys) - before, len(self.keys)
 
     def remove_key_by_id(self, key_id: str) -> bool:
+        self._sync()
         target_idx = None
         for idx, k in enumerate(self.keys):
             if self._id(k) == key_id or self._mask(k) == key_id or k == key_id:
@@ -190,6 +208,7 @@ class DynamicKeyPool:
         return max(0.0, until - now)
 
     def candidates(self, model: str, strict: bool = False) -> list[str]:
+        self._sync()
         if not self.keys:
             return []
         ordered = self._ordered()
@@ -199,6 +218,7 @@ class DynamicKeyPool:
         return ready if ready else ordered
 
     def cool(self, key: str, model: str, exc: Exception):
+        self._sync()
         kid = self._id(key)
         if isinstance(exc, (AuthenticationError, PermissionDeniedError)):
             scope, seconds = "*", REJECTED_COOLDOWN
@@ -223,6 +243,7 @@ class DynamicKeyPool:
             )
 
     def good(self, key: str, model: str):
+        self._sync()
         kid = self._id(key)
         changed = self.state.get("current") != kid
         self.state["current"] = kid
@@ -232,12 +253,14 @@ class DynamicKeyPool:
             self._save_state()
 
     def reset(self):
+        self._sync()
         self.state["cooldown"] = {}
         if self.keys:
             self.state["current"] = self._id(self.keys[0])
         self._save_state()
 
     def status_rich(self) -> list[dict]:
+        self._sync()
         now = time.time()
         items = []
         curr = self.state.get("current")

@@ -169,7 +169,12 @@ VERSION = f"v{load_app_version()}"
 AUTO_UPDATE_REPO = "markoboskoauroville/groq-auto-update"
 # Marko, 12.11.2026: "qwen3.6-27b is our default model please don't use anything from open AI. accept Whisper."
 DEFAULT_MODEL = "qwen/qwen3.6-27b"
-DEFAULT_PORT = 8765
+# Phase A (14.11.2026): on the Mac the Swift app Groq Queen AI Studio (Mantra) owns 127.0.0.1:8765 and starts this server
+# as its internal backend (QWEN_BACKEND=1) on 8766; everything the Swift app does not serve yet is proxied here unchanged.
+# Started any other way (the Linux VM, by hand) it is the whole Queen on 8765, as before. GROQ_PORT / QUEEN_PORT override.
+QWEN_BACKEND = os.environ.get("QWEN_BACKEND", "") in ("1", "true", "yes")
+DEFAULT_PORT = int(os.environ.get("QUEEN_PORT") or os.environ.get("GROQ_PORT") or (8766 if QWEN_BACKEND else 8765))
+BACKEND_PORT_FILE = Path.home() / ".groq" / "backend_port"
 MAX_MESSAGES = 80
 
 # Thunderstrike SVG Favicon
@@ -661,6 +666,27 @@ def app_status():
                    location=os.environ.get("QUEEN_LOCATION", "mac"), pid=os.getpid())
 
 
+# Phase A (14.11.2026): the Swift app serves /api/chat itself and calls these for the parts that stay in Python for now.
+@app.post("/api/internal/local_command")
+def internal_local_command():
+    d = request.get_json(silent=True) or {}
+    return jsonify(ok=True, answer=_local_command_answer((d.get("text") or "")))
+
+
+@app.post("/api/internal/after_turn")
+def internal_after_turn():
+    d = request.get_json(silent=True) or {}
+    lines = list(_after_turn(d.get("prompt") or "", d.get("content") or "", d.get("model") or DEFAULT_MODEL,
+                             d.get("mode") or "normal"))
+    return jsonify(ok=True, lines=lines)
+
+
+@app.post("/api/internal/mark_dirty")
+def internal_mark_dirty():
+    _mark_data_dirty()
+    return jsonify(ok=True)
+
+
 def _is_trusted_local_origin(hdr_url: str) -> bool:
     """Return True if Origin/Referer points to 127.0.0.1 or localhost."""
     try:
@@ -948,25 +974,9 @@ def remote_send():
         fresh=fresh
     )
 
-# --- Standard Chatbot Streaming Route with Failover ---
-@app.post("/api/chat")
-def chat():
-    if not pool.keys:
-        return jsonify(error="No Groq API keys loaded. Please click '📥 Import Keys' or '⚙️' to add your key."), 400
-
-    data = request.get_json(silent=True) or {}
-    messages = data.get("messages", [])
-    model = data.get("model") or DEFAULT_MODEL
-    output_mode = data.get("output_mode", "normal")
-    system_prompt = (data.get("system_prompt") or "").strip()
-
-    # Check last user message for automatic Code Box intent
-    last_user_text = ""
-    for m in reversed(messages):
-        if m.get("role") == "user":
-            last_user_text = m.get("content", "")
-            break
-
+def _local_command_answer(last_user_text: str):
+    """Queen's local chat commands, matched before Groq is called (no tokens, no cost). None = not a command.
+    Phase A (14.11.2026): also served to the Swift app as POST /api/internal/local_command."""
     # "open Affinity" / "close Affinity" and "tree|read|search|sync <repo>": answered locally, not by the model (no tokens, no cost).
     try:
         # 14.11.2026, VM only: "open whatsapp" / "whatsapp: <request>" -> the WhatsApp machine (the VM's Firefox)
@@ -1028,7 +1038,70 @@ def chat():
             handover(f"Command: {last_user_text[:160]} -> {local_answer[:220]}")
         except Exception:
             pass
+    return local_answer
 
+
+def _after_turn(last_user_text: str, joined_content: str, model: str, output_mode: str):
+    """After her answer: the training "output" event, the command lines of her answer RUN (each result yielded as text),
+    the handover line. Phase A (14.11.2026): also served to the Swift app as POST /api/internal/after_turn."""
+    # 13.11.2026 (claude-teaches-only.md): her own answer is her hand. A line of her answer that is one of her chat
+    # commands (open app / rename app / rename repo / install latest) is RUN, and its result is part of the answer.
+    # Before this, she could only describe a step and wait for someone to type it. Changes still wait for approval.
+    try:   # training data (13.11.2026): every answer of hers is an "output" event, its commands carry the turn
+        import training_log as _tl
+        _turn = _tl.new_turn()
+        _tl.TURN.id = _turn
+        _tl.log_output(_turn, last_user_text, re.sub(r"<think>.*?</think>", "", joined_content, flags=re.S).strip(),
+                       model, output_mode)
+    except Exception as _exc:
+        print(f"[training] {_exc}", flush=True)
+    try:
+        from rename_skill import chat_rename_command
+        ran, seen = 0, set()
+        body = re.sub(r"<think>.*?</think>", "", joined_content, flags=re.S)
+        for raw in body.splitlines():
+            line = raw.strip().strip("`").strip()
+            line = re.sub(r"^([-*>]|\d+[.)])\s+", "", line).strip().strip("`").strip()
+            # a quoted usage line (placeholders, or text after the command) is not a command: skip it quietly
+            if not line or line.lower() in seen or re.search(r"<[^>]*>|`", line):
+                continue
+            seen.add(line.lower())
+            if ran < 10:
+                res = chat_rename_command(line)
+                if res:
+                    ran += 1
+                    yield f"\n\n▶ {line}\n{res}"
+    except Exception as _exc:
+        yield f"\n\n▶ the command could not run: {type(_exc).__name__}: {_exc}"
+
+    try:   # the chat step in the handover (13.11.2026)
+        from news import handover
+        handover(f"Chat: Marko: {last_user_text[:160]} -> Queen: {re.sub(r'<think>.*?</think>', '', joined_content, flags=re.S)[:220]}")
+    except Exception:
+        pass
+
+
+# --- Standard Chatbot Streaming Route with Failover ---
+@app.post("/api/chat")
+def chat():
+    if not pool.keys:
+        return jsonify(error="No Groq API keys loaded. Please click '📥 Import Keys' or '⚙️' to add your key."), 400
+
+    data = request.get_json(silent=True) or {}
+    messages = data.get("messages", [])
+    model = data.get("model") or DEFAULT_MODEL
+    output_mode = data.get("output_mode", "normal")
+    system_prompt = (data.get("system_prompt") or "").strip()
+
+    # Check last user message for automatic Code Box intent
+    last_user_text = ""
+    for m in reversed(messages):
+        if m.get("role") == "user":
+            last_user_text = m.get("content", "")
+            break
+
+    local_answer = _local_command_answer(last_user_text)
+    if local_answer:
         def local_stream():
             yield json.dumps({"t": local_answer}) + "\n"
             yield json.dumps({"u": {
@@ -1137,41 +1210,8 @@ def chat():
             prompt_tokens = max(5, total_tokens - (len(joined_content) + len(joined_reasoning)) // 4)
             completion_tokens = max(1, total_tokens - prompt_tokens)
 
-        # 13.11.2026 (claude-teaches-only.md): her own answer is her hand. A line of her answer that is one of her chat
-        # commands (open app / rename app / rename repo / install latest) is RUN, and its result is part of the answer.
-        # Before this, she could only describe a step and wait for someone to type it. Changes still wait for approval.
-        try:   # training data (13.11.2026): every answer of hers is an "output" event, its commands carry the turn
-            import training_log as _tl
-            _turn = _tl.new_turn()
-            _tl.TURN.id = _turn
-            _tl.log_output(_turn, last_user_text, re.sub(r"<think>.*?</think>", "", joined_content, flags=re.S).strip(),
-                           model, output_mode)
-        except Exception as _exc:
-            print(f"[training] {_exc}", flush=True)
-        try:
-            from rename_skill import chat_rename_command
-            ran, seen = 0, set()
-            body = re.sub(r"<think>.*?</think>", "", joined_content, flags=re.S)
-            for raw in body.splitlines():
-                line = raw.strip().strip("`").strip()
-                line = re.sub(r"^([-*>]|\d+[.)])\s+", "", line).strip().strip("`").strip()
-                # a quoted usage line (placeholders, or text after the command) is not a command: skip it quietly
-                if not line or line.lower() in seen or re.search(r"<[^>]*>|`", line):
-                    continue
-                seen.add(line.lower())
-                if ran < 10:
-                    res = chat_rename_command(line)
-                    if res:
-                        ran += 1
-                        yield json.dumps({"t": f"\n\n▶ {line}\n{res}"}) + "\n"
-        except Exception as _exc:
-            yield json.dumps({"t": f"\n\n▶ the command could not run: {type(_exc).__name__}: {_exc}"}) + "\n"
-
-        try:   # the chat step in the handover (13.11.2026)
-            from news import handover
-            handover(f"Chat: Marko: {last_user_text[:160]} -> Queen: {re.sub(r'<think>.*?</think>', '', joined_content, flags=re.S)[:220]}")
-        except Exception:
-            pass
+        for _line in _after_turn(last_user_text, joined_content, model, output_mode):
+            yield json.dumps({"t": _line}) + "\n"
 
         cost_info, ledger = record_spend(model, prompt_tokens, completion_tokens, req_id)
         speed = round(completion_tokens / max(elapsed, 0.05), 1)
@@ -2429,6 +2469,9 @@ def github_read_url():
 
 @app.get("/")
 def index():
+    if QWEN_BACKEND:   # Phase A: the internal backend of the Swift app has no web page
+        return Response("Queen's internal backend (Phase A). Queen is the Swift app Groq Queen AI Studio (Mantra) on "
+                        "http://127.0.0.1:8765.\n", mimetype="text/plain")
     page = Path(__file__).with_name("index.html").read_text(encoding="utf-8")
     page = (
         page.replace("__DEFAULT_MODEL__", DEFAULT_MODEL)
@@ -3576,8 +3619,12 @@ def main():
 
     try:
         HOME.mkdir(parents=True, exist_ok=True)
-        PORT_FILE.write_text(str(port), encoding="utf-8")
-        URL_FILE.write_text(url, encoding="utf-8")
+        if QWEN_BACKEND:
+            # the Swift app owns active_port/app_url (8765); it reads where its backend listens from here
+            BACKEND_PORT_FILE.write_text(str(port), encoding="utf-8")
+        else:
+            PORT_FILE.write_text(str(port), encoding="utf-8")
+            URL_FILE.write_text(url, encoding="utf-8")
     except Exception:
         pass
 
@@ -3638,6 +3685,8 @@ def main():
     if port != requested_port:
         print(f"\033[1;33m  Notice:\033[0m Port {requested_port} was busy. Bound to first free port: \033[1;32m{port}\033[0m")
     print(f"\033[1m  URL:\033[0m \033[4;34m{url}\033[0m (API only; the window is the Swift app Groq Queen AI Studio (Mantra))")
+    if QWEN_BACKEND:
+        print("\033[1;33m  Role:\033[0m internal backend of the Swift app (it serves 127.0.0.1:8765 and proxies the rest here)")
     key_info = f"\033[1;32m{len(pool.keys)} key(s) in Key Manager\033[0m" if pool.keys else "\033[1;33mNo keys configured (click '📥 Import Keys')\033[0m"
     print(f"\033[1m  Key Manager:\033[0m {key_info}")
     print(f"\033[1;35m  Back Door:\033[0m POST {url}/api/remote/send | POST {url}/api/test/live | POST {url}/api/terminal/log")
