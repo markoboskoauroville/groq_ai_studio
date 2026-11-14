@@ -111,3 +111,7 @@ record + dataset-v1; Hugging Face QLoRA workflow (training/hf, not yet run: need
 say-on-phone; one tab; Speak fixed; bandwidth savers (viewer v30, MPA classroom); AI for Beginners (12 chapters, 13 plates,
 bowl, live); bowl on Winning Film; Chrome through one permanent connection; the profile box closed by Macro Recorder.
 Open: Marko reads the book; HF token; an MPA class to see the snowflake; the keychain question for each new viewer build.
+
+14.11.2026, Marko (word for word): "now it is time to convert our Grok AI Studio into a Swift app. Please do that and upgrade it with new skills for accessibility, and test it like this: ask her to check my last 5 WhatsApp messages, and it needs to understand who sent them and what was not responded to. Without taking screenshots, it needs to use accessibility to get the text"
+Then: "WhatsApp, as always, we are using the Firefox browser with something we call remote control"
+Status: saved first; in progress (Opus worker).
