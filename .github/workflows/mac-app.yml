@@ -1,0 +1,30 @@
+# mac-app.yml from MANTRA_MANIFEST/workflows/mac-swift.yml: GitHub compiles Groq AI Studio (Mantra).app and axread (mac_app/)
+# at every push to main that touches mac_app/, and publishes the release vN (VERSION in mac_app/app/App.swift) as Latest.
+# The app's Updater asks Marko at start when a newer vN is there. Nothing is compiled on the Mac.
+name: mac-app
+on:
+  push:
+    branches: [main]
+    paths: ["mac_app/**", ".github/workflows/mac-app.yml"]
+  workflow_dispatch:
+permissions:
+  contents: write
+env:
+  APP: "Groq AI Studio (Mantra)"
+  VERSION_FILE: mac_app/app/App.swift
+jobs:
+  build:
+    runs-on: macos-15
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build
+        run: SIGN=- NO_INSTALL=1 ./mac_app/build.sh
+      - name: Pack
+        run: cd mac_app/build && ditto -c -k --keepParent "$APP.app" app.zip
+      - name: Release (Latest)
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          V=$(sed -n 's/^let VERSION = \([0-9]*\)/\1/p' "$VERSION_FILE")
+          if gh release view "v$V" >/dev/null 2>&1; then gh release upload "v$V" mac_app/build/app.zip --clobber
+          else gh release create "v$V" mac_app/build/app.zip --target "$GITHUB_SHA" --latest --title "$APP v$V" --notes "$(git log -1 --format=%s)"; fi
