@@ -69,6 +69,8 @@ def chat_whatsapp_machine_command(text):
         return ("Checked: Firefox running, remote control on 9223, window in front. " if ok else "Check FAILED: ") + _state_words(s)
     m = PHONE.match(t)
     if m:   # 14.11.2026 (Marko: "enter my phone number and my country and press Next"): number from the VM file unless given
+        if not json.loads(_run("status", timeout=40)).get("bidi"):   # Firefox closed or without remote control: start it first
+            _run("start")
         r = json.loads(_run("phone-login", *([m.group(1).strip()] if m.group(1) else []), timeout=90))
         if r.get("code"):
             return (f"Checked: number typed, country {r.get('country')}, Next pressed. WhatsApp's link code is {r['code']}. "
