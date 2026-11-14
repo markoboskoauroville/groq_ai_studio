@@ -39,7 +39,9 @@ SKILL_FILES = ("whatsapp-supervised.md", "whatsapp-remote.md", LESSONS)
 MODEL = "qwen/qwen3.6-27b"
 CLAUDE_MODEL = "sonnet"
 CLAUDE_TIMEOUT = 90
-ACTIONS = ("shot", "open", "scroll", "draft", "photo_draft", "chats", "read")
+ACTIONS = ("shot", "open", "scroll", "draft", "photo_draft", "chats", "read", "call", "answer", "hangup")
+DOOR = "http://100.102.86.30:8879"                          # the WhatsApp door (calls: WhatsApp Business on Pixel 2)
+DOOR_TOKEN = Path.home() / ".config" / "chromium-vm" / "wa-door-token"
 LOG = Path.home() / ".groq" / "whatsapp_supervised.log"
 _CTX = {"pool": None, "spend": None}
 CONVS = {}                                                   # conv -> {"turns": [...], "chat": str, "choices": [...]}
@@ -156,8 +158,9 @@ def assess(text, queen_plan, conv):
         "check her plan BEFORE it runs. Her skills:\n\n" + _skills() +
         "\n\n---\nActions: shot (picture of the screen, chat list), open {chat}, scroll {dir up|down}, draft {chat, text} "
         "(typed UNSENT into the box), photo_draft {chat, text}, chats (list the chat titles), read {chat?, n} (last n messages "
-        "of the open chat, or of chat), none (nothing can or should be done: say why). There is NO send action and NO call "
-        "action: sending is never planned; calls are not possible on WhatsApp Web for this account (plan none). A draft's text is Marko's words "
+        "of the open chat, or of chat), call {chat} (a WhatsApp voice call from WhatsApp Business on the VM's Pixel 2, only "
+        "when Marko clearly asks to call someone), answer (take the ringing call), hangup (end or decline the call), none "
+        "(nothing can or should be done: say why). There is NO send action: sending is never planned. A draft's text is Marko's words "
         "verbatim (his language), without the instruction words around them. chat is the name as he said it; the hands "
         "search it and offer choices when several match.\n"
         f"Chat open now: {conv.get('chat') or 'unknown'}\n"
@@ -238,8 +241,27 @@ def _push_lesson(lesson):
 
 
 # ------------------------------------------------------------------ 3. doing it
+def _door(path, body):
+    """Calls run on the door (wa_door.py on this VM): WhatsApp Business on Pixel 2, adb taps."""
+    import urllib.request  # noqa: PLC0415
+    tok = DOOR_TOKEN.read_text().strip() if DOOR_TOKEN.exists() else ""
+    req = urllib.request.Request(DOOR + path, data=json.dumps(body).encode(), method="POST",
+                                 headers={"Content-Type": "application/json", "X-Token": tok})
+    try:
+        with urllib.request.urlopen(req, timeout=60) as r:
+            return json.loads(r.read().decode() or "{}")
+    except Exception as exc:
+        return {"ok": False, "say": f"The WhatsApp door did not answer: {exc}"}
+
+
 def run_plan(plan):
     a = plan["action"]
+    if a in ("call", "answer", "hangup"):
+        if a == "call" and not (plan.get("chat") or "").strip():
+            return {"ok": False, "say": "Who should be called?", "action": a, "choices": []}
+        r = _door("/" + a, {"chat": plan.get("chat", "")} if a == "call" else {})
+        return {"ok": bool(r.get("ok")), "say": r.get("say", ""), "chat": r.get("who", ""), "action": a, "choices": [],
+                "call": r.get("call")}
     if a == "read":
         args = ["read"] + ([plan["chat"]] if plan.get("chat") else []) + [str(int(plan.get("n") or 10))]
         r = WR._wa(*args)
