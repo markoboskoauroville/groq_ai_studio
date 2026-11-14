@@ -115,7 +115,7 @@ def plan_by_queen_model(text, conv):
     from groq import Groq  # noqa: PLC0415
     import cost_gate  # noqa: PLC0415
     try:
-        cost_gate.require("queen-whatsapp", "plan one WhatsApp action", cost_gate.CHAT_CALL_USD)
+        cost_gate.require("queen-whatsapp", "plan one WhatsApp action", cost_gate.CHAT_CALL_USD, timeout=12)  # never hold the phone for minutes
     except Exception as exc:
         return None, f"the Cost Agent did not allow her model: {exc}"
     system = ("You are Queen in WhatsApp mode: you control WhatsApp Web in Marko's Firefox on the VM through one action.\n"
@@ -156,7 +156,8 @@ def assess(text, queen_plan, conv):
         "check her plan BEFORE it runs. Her skills:\n\n" + _skills() +
         "\n\n---\nActions: shot (picture of the screen, chat list), open {chat}, scroll {dir up|down}, draft {chat, text} "
         "(typed UNSENT into the box), photo_draft {chat, text}, chats (list the chat titles), read {chat?, n} (last n messages "
-        "of the open chat, or of chat). There is NO send action: sending is never planned. A draft's text is Marko's words "
+        "of the open chat, or of chat), none (nothing can or should be done: say why). There is NO send action and NO call "
+        "action: sending is never planned; calls are not possible on WhatsApp Web for this account (plan none). A draft's text is Marko's words "
         "verbatim (his language), without the instruction words around them. chat is the name as he said it; the hands "
         "search it and offer choices when several match.\n"
         f"Chat open now: {conv.get('chat') or 'unknown'}\n"
@@ -174,6 +175,8 @@ def assess(text, queen_plan, conv):
         raise ValueError("Claude's assessment was not the json asked for: " + a[:160])
     if d["verdict"] == "ok" and queen_plan:
         d["plan"] = queen_plan
+    if d["plan"].get("action") == "none":
+        return d
     if d["plan"].get("action") not in ACTIONS:
         raise ValueError("Claude's plan has no valid action: " + json.dumps(d["plan"])[:160])
     return d
@@ -293,7 +296,10 @@ def supervised(text, conv_id, pick=""):
             add_lesson(a["lesson"], text, queen_plan, plan)
         except Exception as exc:
             _log(event="lesson-write-failed", error=str(exc))
-    res = run_plan(plan)
+    if plan.get("action") == "none":
+        res = {"ok": True, "say": a.get("why") or "Nothing to do.", "choices": [], "action": "none"}
+    else:
+        res = run_plan(plan)
     if res.get("chat"):
         conv["chat"] = res["chat"]
     conv["choices"] = res.get("choices") or []
