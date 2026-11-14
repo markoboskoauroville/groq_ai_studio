@@ -1,3 +1,5 @@
+14.11.2026: `/api/system/settings?pane=<name>` + chat "open the X settings page" (system_settings.py, skill open-settings-pane.md): opens a System Settings pane and verifies the window title and front app.
+
 # Groq AI Studio: takeover
 
 **14.11.2026, Mac: the Swift app and Accessibility.** Marko: "now it is time to convert our Grok AI Studio into a Swift app ... upgrade it

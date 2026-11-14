@@ -639,6 +639,13 @@ except Exception as _vol_exc:
     print(f"[system_volume] not loaded: {_vol_exc}")
 
 
+try:
+    from system_settings import register as _register_settings
+    _register_settings(app)
+except Exception as _set_exc:
+    print(f"[system_settings] not loaded: {_set_exc}")
+
+
 @app.get("/api/app/status")
 def app_status():
     """One cheap line for the Swift app (Groq/Queen AI Studio (Mantra)): no network call, ledger and pool only (14.11.2026)."""
@@ -968,6 +975,9 @@ def chat():
         if sys.platform == "darwin":
             from system_volume import chat_volume_command   # 14.11.2026: Mac output volume, $0, before anything else
             local_answer = chat_volume_command(last_user_text)
+        if not local_answer and sys.platform == "darwin":
+            from system_settings import chat_settings_command   # 14.11.2026: open a Settings pane and verify the title
+            local_answer = chat_settings_command(last_user_text)
         if not local_answer and sys.platform == "darwin":
             from whatsapp_ax import chat_whatsapp_ax_command
             local_answer = chat_whatsapp_ax_command(last_user_text)
