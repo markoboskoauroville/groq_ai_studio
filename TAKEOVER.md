@@ -1,3 +1,12 @@
+## Gemini images (21.11.2026)
+
+`qwen_app/gemini_skill.py` makes free Gemini pictures in Marko's Chrome profiles over the CDP broker (:9333): references
+attached by catching Gemini's file input (patched `HTMLInputElement.click` + `DOM.setFileInputFiles`), Create image tool,
+aspect ratio, Send, picture copied from Chrome's memory; refusal, timeout or a box needing Marko hands over to the next
+profile. In the v31 runtime: `POST /api/gemini/image` (registered in `queen_backend.py`) and the local skill
+`GEMINI IMAGE: <job.json>` (`queen_python_skills/gemini_image.py`, help: `gemini image help`). Failure screenshots go to
+`~/.groq/gemini_fail/`.
+
 ## Groq-free runtime migration (19.11.2026): v31 released; Mac update pending
 
 The active runtime is being moved from the legacy Groq chat server to a Swift-owned local API and a standalone Python backend.

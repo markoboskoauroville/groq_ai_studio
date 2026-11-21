@@ -1,3 +1,18 @@
+## 21.11.2026: Gemini image attach + profile rotation
+
+- Gemini's "Upload files" clicks a hidden `<input type=file>`; Chrome's `Page.fileChooserOpened` did not come back through the
+  broker for background tabs. Patch `HTMLInputElement.prototype.click` before opening the menu, catch the input, and fill it
+  with `DOM.setFileInputFiles` by nodeId (all references at once; the input is `multiple`). The chooser event is only a fallback.
+- Never press '+' when its menu is already open: the second press closes it. Check for the menu item first.
+- Gemini keeps zero-width copies of its upload buttons; every selector must require a visible box.
+- The image tool is a `[role=menuitemcheckbox]` "Create image"; the aspect ratio is a chip "Aspect ratio" with
+  `[role=menuitemradio]` entries.
+- Accounts can stop on boxes that are Marko's: "Creating content from images and files - Agree" on the first upload, Gemini's
+  landing page / "Use Gemini" consent. Detect, screenshot, skip the account; never press them.
+- Gemini serves WebP; convert to the extension's format before saving as .png.
+- v31's backend does not read queen_skills/*.md: a skill must be in `queen_python_skills/` (catalog + dispatch) and its route
+  registered in `queen_backend.py`.
+
 ## 19.11.2026: Groq-free runtime migration
 
 - Keep the retired model runtime out of the app build and installer; a compatibility launcher should import only the new

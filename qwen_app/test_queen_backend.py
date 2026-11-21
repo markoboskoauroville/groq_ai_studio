@@ -52,7 +52,7 @@ check(
 )
 skill_list = client.get("/api/skills/list").get_json()["skills"]
 check("Python skill catalog includes the provider-independent Ableton skill",
-      {item["id"] for item in skill_list} == {"list-skills", "current-folder", "ableton-control"})
+      {item["id"] for item in skill_list} == {"list-skills", "current-folder", "ableton-control", "gemini-image"})
 ableton_capabilities = client.get("/api/ableton/capabilities").get_json()
 check("Ableton capabilities expose actions for any model provider",
       ableton_capabilities["ok"] and ableton_capabilities["provider_independent"]
@@ -110,3 +110,10 @@ with tempfile.TemporaryDirectory() as temp_dir:
           and set(config["keys"]) == {"google", "anthropic"})
 
 shutil.rmtree(test_home)
+
+# Gemini image skill (21.11.2026): the route exists and refuses an empty job without touching Chrome
+from queen_python_skills import dispatch as _dispatch, catalog as _catalog
+check("gemini-image in the catalog", any(s["id"] == "gemini-image" for s in _catalog()))
+check("gemini image help is local", "GEMINI IMAGE:" in _dispatch("gemini image help").answer)
+check("gemini image job without a file is explained", "No job file" in _dispatch("GEMINI IMAGE: /nonexistent/job.json").answer)
+check("gemini image route refuses an empty job", client.post("/api/gemini/image", json={}).status_code == 400)

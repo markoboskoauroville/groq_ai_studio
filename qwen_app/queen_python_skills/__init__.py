@@ -46,6 +46,11 @@ def _ableton_help(_context: dict | None = None) -> SkillResult:
     )
 
 
+def _gemini_help(_context: dict | None = None) -> SkillResult:
+    from . import gemini_image
+    return SkillResult("gemini-image", gemini_image.help_text())
+
+
 SKILLS = (
     Skill(
         skill_id="list-skills",
@@ -79,6 +84,15 @@ SKILLS = (
         commands=frozenset({"ableton help", "ableton actions"}),
         handler=_ableton_help,
     ),
+    Skill(
+        skill_id="gemini-image",
+        description=(
+            "Free Gemini pictures in Marko's Chrome profiles (references attached, Create image, aspect ratio, "
+            "profile rotation on refusal). Use `GEMINI IMAGE: <job.json>` or POST /api/gemini/image."
+        ),
+        commands=frozenset({"gemini image help", "gemini image", "how do you make gemini images"}),
+        handler=_gemini_help,
+    ),
 )
 
 
@@ -97,6 +111,9 @@ def dispatch(text: str, context: dict | None = None) -> SkillResult | None:
     if command.startswith("ableton:"):
         from . import ableton
         return SkillResult("ableton-control", ableton.execute_text(text))
+    if command.startswith("gemini image:"):
+        from . import gemini_image
+        return SkillResult("gemini-image", gemini_image.run_job(text.split(":", 1)[1]))
     for skill in SKILLS:
         if command in skill.commands:
             return skill.handler(context)

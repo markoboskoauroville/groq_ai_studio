@@ -43,6 +43,11 @@ UPDATABLE_FILES = {
 app = Flask("queen")
 app.config["MAX_CONTENT_LENGTH"] = 25 * 1024 * 1024
 capi_chat.register(app)
+try:                                   # Gemini pictures in Marko's Chrome (21.11.2026): /api/gemini/image, /api/gemini/account
+    import gemini_skill
+except ImportError:                    # imported as a package (tests)
+    from qwen_app import gemini_skill
+gemini_skill.register(app)
 
 
 def _version_data() -> dict[str, Any]:

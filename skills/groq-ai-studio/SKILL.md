@@ -74,6 +74,7 @@ The app can update its own source files through a chunked transfer system:
 | GET | `/api/billing` | Spend + rate limits |
 | GET/POST | `/api/star/*` | Star Menu & Startup 55-app computer control (`STAR_API` `:8863`) |
 | GET/POST | `/api/voice/*` | Local Voice Engine & film subtitles (`MANTRA_VOICE` `:8837`) |
+| POST | `/api/gemini/image` | Free Gemini picture in Marko's Chrome (21.11.2026): {prompt, image: path or [paths], out, aspect "9:16", account, max_accounts, skip}; file input caught + DOM.setFileInputFiles, Create image, profile rotation; also `GEMINI IMAGE: <job.json>` in chat (v31 runtime) |
 | GET/POST | `/api/elevate/*` | Elevate Media production (board, WhatsApp, Drive comments, image fetch, free Gemini, Resolve tools) |
 | GET/POST | `/api/test/live` | Built-in visible self-test backdoor (prints 13 checks to Queen's terminal + returns JSON) |
 | POST | `/api/terminal/log` | Print live `$ command` / status banners into Queen's terminal console |

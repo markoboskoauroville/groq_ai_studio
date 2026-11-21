@@ -1,14 +1,38 @@
-When: a picture must be made or changed for free: extend a photo to another shape, regenerate a background, enhance.
-Call: `POST /api/gemini/image {prompt, image, out}`: Gemini in Marko's Chrome over its DevTools port (remote debugging on,
-chrome://inspect/#remote-debugging). Never Firefox, never the download button: the result is a screenshot of the picture.
-ORDER since 16.11.2026 (Marko: "You switch account under one account and when this is exhausted then go to switching of the profile. Of course avoiding the accounts which are exhausted."): first the next non-exhausted account in the same tab of the current profile, then, when all accounts of that profile are exhausted, the next Chrome profile as its own window and its accounts; exhausted accounts are skipped everywhere until their reset time. Done by `python3 ~/Developer/MACRO_SKILLS/tools/gemini_account.py switch` (skill gemini-switch-account). The profile list below (12.11.2026) is the profile step.
-Accounts (Marko, 12.11.2026): marko.bosko@auroville.community first; when an account is exhausted, refuses, times out or
-gives no image within 3 minutes, the next Chrome profile signed in to Google takes over (its window is opened if closed);
-the band account santoshi.bend@gmail.com last (it could not edit images on 29.10.2026). At most four accounts per picture.
-Save every result in the project's Pictures folder with " (nano banana)" in the name, and reuse it next time (no second
-generation for the same picture).
-Prompts that work: say what must stay EXACTLY (people, faces, clothes, instruments) and what only may be added (ceiling,
-floor, lights); ask for photorealistic, same light and colours.
-13.11.2026: new pictures from words alone work (no reference image). The picture is taken as its own file from Chrome's memory
-(Page.getResourceContent of the image URL): full size, no Gemini buttons or input bar over it. A screenshot is only the fallback.
-Chrome asks "Allow remote debugging?" for every connection; Macro Recorder presses Allow (needs Quartz in Queen's Python).
+When: a picture must be made or changed for free: extend a photo to another shape, regenerate a background, enhance,
+storyboard frames from character/product references (Elevate Media UGC, 21.11.2026).
+Call: `POST /api/gemini/image {prompt, image, out, aspect?}`: Gemini in Marko's Chrome over its DevTools (broker
+127.0.0.1:9333, remote debugging on). `image` is one path OR a list of paths: several references are attached at once
+(say in the prompt "Image 1 is ..., Image 2 is ..., Image 3 is ..."). `aspect` "9:16" / "3:4" / "1:1" / "4:3" / "16:9"
+sets the Aspect ratio chip of Gemini's Create image tool. Python: `gemini_skill.make_image(prompt, [paths], out,
+account=..., aspect="9:16", max_accounts=8, skip={...})`. Never Firefox, never the download button.
+
+THE METHOD (fixed 21.11.2026, proven on marko.bosko@gmail.com and cafeteriavc.media@auroville.org.in):
+1. open gemini.google.com/app in the profile's window (focus emulated, background tab, Marko's screen untouched);
+2. patch HTMLInputElement.prototype.click so the file input Gemini clicks is CAUGHT (marked data-q-cap) instead of
+   opening the macOS chooser;
+3. '+' ("Upload & tools", found by aria-label, visible copy only) -> "Upload files" ([role=menuitem]); press '+' only
+   when its menu is not already open (a second press closes it);
+4. DOM.setFileInputFiles on the caught input's node with all the files; wait until the thumbnails are there and the
+   upload spinner is gone (fallback: Page.fileChooserOpened -> backendNodeId);
+5. '+' -> "Create image" ([role=menuitemcheckbox]) -> chip "Aspect ratio" -> [role=menuitemradio] "9:16";
+6. type the prompt (Input.insertText), press Send, wait for the picture, copy its bytes from Chrome's memory
+   (Page.getResourceContent). Gemini serves WebP: the file is converted to the format its name says (sips).
+Why it failed before (21.11.2026 06:30): Chrome's file-chooser event did not come back through the broker, the '+' was
+pressed twice (menu closed), the preview test counted hidden copies.
+
+WAITS FOR MARKO (never pressed by Queen; the account is skipped and the next one used; screenshots in ~/.groq/gemini_fail):
+- "Creating content from images and files ... Agree" on an account's first upload (av.live.vmix@gmail.com, 21.11.2026);
+- Gemini's landing page / "Use Gemini" first-use consent (father.aya@gmail.com, 21.11.2026);
+- a sign-in. Tell Marko which account and bring that window to the front of the MacBook screen for him.
+
+WINDOWS (Marko, 21.11.2026: "Anything you generate with Gemini automatically, put the windows on the Mac screen."): every
+profile window opened for a picture goes to the MacBook's built-in display at once (`macro win-snap "Google Chrome – <profile
+name>" maximize 2`, checked in `macro win-list` = "Built-in Retina Display"), never the BenQ; done by `_to_mac_screen`.
+
+ROTATION: when an account refuses ("I can't create images" / limit), times out (3 min) or waits for Marko, the next
+Chrome profile signed in to Google takes over (window opened by Chrome's launcher; tabs it opened are closed after).
+marko.bosko@auroville.community first, santoshi.bend and mantreshvar.margii last. Start the next picture with the account
+that made the last one (`r["account"]`). One image at a time. In-tab account switching: skill gemini-switch-account.
+Save every result in the project's folder and reuse it (no second generation for the same picture). Log the account used.
+Prompts that work: say what must stay EXACTLY (people, faces, clothes, product label) and what only may change; ask for
+photorealistic, same light and colours, "no captions or text".
