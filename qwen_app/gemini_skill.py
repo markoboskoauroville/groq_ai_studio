@@ -42,7 +42,7 @@ class Exhausted(GeminiError):
 
 
 LOCAL_STATE = Path.home() / "Library" / "Application Support" / "Google" / "Chrome" / "Local State"
-LIMIT_WORDS = r"limit|try again (later|tomorrow)|come back later|too many|quota|can't (edit|create|generate)|cannot (edit|create|generate)|not able to (edit|create)|unable to (edit|create)"
+LIMIT_WORDS = r"limit|try again (later|tomorrow)|come back later|too many|quota|can't (directly )?(edit|create|generate)|cannot (directly )?(edit|create|generate)|image generation (tool )?is not available|not available in this session|not able to (edit|create)|unable to (edit|create)"
 
 
 def profiles(first=ACCOUNT):
@@ -183,6 +183,9 @@ def _make_default(cdp, pdir, opened):
     (tested 12.11.2026: createTarget with another profile's context id fails). So the wanted profile gets a window."""
     import subprocess  # noqa: PLC0415
     before = _default_ctx(cdp)
+    # only tabs that did not exist before are Queen's to close: when a profile fails to open, Chrome falls back to
+    # another profile's context, and its OLD tabs (Marko's Google Keep in Profile 15, 21.11.2026) must never be closed
+    existing = {t["targetId"] for t in cdp.send("Target.getTargets")["targetInfos"]}
     # Chrome's own launcher hands the request to the running Chrome (no second instance, no stolen focus): 13.11.2026
     subprocess.run(["/Applications/Google Chrome.app/Contents/MacOS/Google Chrome", f"--profile-directory={pdir}",
                     "about:blank"], check=False, timeout=20,
@@ -197,7 +200,8 @@ def _make_default(cdp, pdir, opened):
     time.sleep(2)
     now = _default_ctx(cdp)
     for t in cdp.send("Target.getTargets")["targetInfos"]:
-        if t["type"] == "page" and now and t.get("browserContextId") == now and now != before:
+        if (t["type"] == "page" and now and t.get("browserContextId") == now and now != before
+                and t["targetId"] not in existing):
             opened.append(t["targetId"])
 
 
@@ -472,7 +476,9 @@ def _make_with(prompt, image_path, out_path, account, pdir, wait=180, aspect=Non
             if said and re.search(LIMIT_WORDS, said, re.I) and len(said) < 1200:
                 raise Exhausted("Gemini: " + said[:200])
         if not found:
-            raise Exhausted(f"no image from Gemini in {wait}s")
+            said = (cdp.js(sess, "(() => { const m=[...document.querySelectorAll('model-response')];"
+                                 " return m.length ? (m[m.length-1].innerText||'').slice(0,300) : ''; })()") or "").strip()
+            raise Exhausted(f"no image from Gemini in {wait}s; it said {said!r} (screenshot {_shot(cdp, sess, 'noimage')})")
 
         # 4a. the picture's own bytes from Chrome's memory (no overlays, full size): Page.getResourceContent of its URL
         out = Path(out_path).expanduser()
