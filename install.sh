@@ -18,7 +18,7 @@ mkdir -p "${BACKEND_DIR}/queen_python_skills"
 
 for file in queen_backend.py auto_updater.py capi_chat.py capi_model_router.py \
             pair_chat.py gcloud_chat.py gemini_hands.py state_paths.py claude_link.py \
-            training_log.py api_credit.py cost_gate.py gemini_skill.py cdp_broker.py app.py; do
+            training_log.py cost_gate.py gemini_skill.py cdp_broker.py app.py; do
     cp "${SRC}/qwen_app/${file}" "${BACKEND_DIR}/${file}"
 done
 cp "${SRC}"/qwen_app/queen_python_skills/*.py "${BACKEND_DIR}/queen_python_skills/"
