@@ -413,12 +413,34 @@ def chat_meditation(low, orig=None):
     return None
 
 
+def chat_lan(low):
+    """21.11.2026 (Marko: "a LAN scanner which is going to show me every device on the current network"): LAN Scanner (Mantra)'s headless door."""
+    if not re.search(r"(which|what|who|list|show|scan|find|see)\b.*\b(devices?|machines?|hosts?|network|lan|wi-?fi)\b|^lan ?scan(ner)?( now)?$|^(scan|check) (my |the )?(lan|network|wi-?fi)$", low) \
+            or not re.search(r"\b(lan|network|wi-?fi|router|devices?)\b", low):
+        return None
+    if re.search(r"\b(vpn|tailscale|keeper|aggregate|speed|internet|ping a|port)\b", low):
+        return None
+    out, rc = _sh([os.path.expanduser("~/.local/bin/lanscan"), "--json"], timeout=100)
+    try:
+        d = json.loads(out)
+    except Exception:
+        return "LAN Scanner (Mantra) gave no answer: " + (out[:200] or "empty") + ". Is it installed in /Applications?"
+    devs = d.get("devices", [])
+    head = f"On {d.get('network') or 'this network'} ({d.get('cidr')}, router {d.get('gateway') or 'none'}) I see {len(devs)} device{'s' if len(devs) != 1 else ''}."
+    lines = []
+    for x in devs:
+        nm = x.get("name") or "no name"
+        lines.append(f"{x['ip']} is {nm}, {x['kind']}" + ((", with a private random address" if x.get("maker") == "Private address" else f", made by {x['maker']}") if x.get("maker") else "") + (f", MAC {x['mac']}" if x.get("mac") else "") + ".")
+    err = (" " + d["error"]) if d.get("error") else ""
+    return head + err + (" " + " ".join(lines) if lines else "")
+
+
 def chat_ops_command(text):
     t = (text or "").strip()
     if not t or len(t) > 160:
         return None
     low = _norm(t)
-    for fn in (chat_vpn, chat_tailscale, chat_keeper, chat_stream, chat_talkmode, chat_engine, chat_cleanup, chat_asana, chat_lights, chat_meditation):
+    for fn in (chat_vpn, chat_tailscale, chat_keeper, chat_lan, chat_stream, chat_talkmode, chat_engine, chat_cleanup, chat_asana, chat_lights, chat_meditation):
         try:
             a = fn(low, t) if fn is chat_meditation else fn(low)
         except Exception as e:
