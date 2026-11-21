@@ -51,8 +51,12 @@ check(
     client.get("/api/version", headers={"Origin": "http://127.0.0.1.attacker.example"}).status_code == 403,
 )
 skill_list = client.get("/api/skills/list").get_json()["skills"]
+import sys as _s; _s.path.insert(0, "queen_python_skills/..")
+from queen_python_skills import lan_scan as _lan
+check("lan-scan matches its phrases and not the others", _lan.matches("which devices are on my network right now?") and _lan.matches("who is on my wifi")
+      and not _lan.matches("vpn status") and not _lan.matches("what is the weather") and not _lan.matches("keeper status"))
 check("Python skill catalog includes the provider-independent Ableton skill",
-      {item["id"] for item in skill_list} == {"list-skills", "current-folder", "ableton-control", "gemini-image"})
+      {item["id"] for item in skill_list} == {"list-skills", "current-folder", "ableton-control", "webcam-recorder", "gemini-image"})
 ableton_capabilities = client.get("/api/ableton/capabilities").get_json()
 check("Ableton capabilities expose actions for any model provider",
       ableton_capabilities["ok"] and ableton_capabilities["provider_independent"]

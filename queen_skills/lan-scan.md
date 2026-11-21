@@ -4,7 +4,7 @@ Marko, 21.11.2026: "a LAN scanner which is going to show me every device on the 
 network", "who is on my wifi", "scan my network", "list the devices on the LAN", "lan scan".
 **What:** LAN Scanner (Mantra) (repo markoboskoauroville/LAN_SCANNER, /Applications, v1+). Its headless door is the command `lanscan`
 (~/.local/bin/lanscan; `lanscan --json` for the raw JSON): one scan of the network the Mac is on (the interface with the default
-route), no window, about 5 seconds. Code: qwen_app/ops_hands.py `chat_lan`, a local chat command answered at zero cost.
+route), no window, about 5 seconds. Code: qwen_app/queen_python_skills/lan_scan.py (what Queen v31 runs, through dispatch in her chat) and qwen_app/ops_hands.py `chat_lan` (legacy runtime); local, answered at zero cost.
 **Steps:** run `lanscan --json`; read network, cidr, gateway and devices[{ip, mac, name, maker, kind}]; answer in plain sentences:
 how many devices, then one line each (address, name or "no name", kind, maker). Kind is a guess (Router, This Mac, Phone, Computer,
 Printer, TV/Speaker, Camera, IoT, Unknown); "Private address" means a phone's random Wi-Fi address, so no maker can be known.

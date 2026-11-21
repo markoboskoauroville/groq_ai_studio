@@ -141,4 +141,9 @@ def dispatch(text: str, context: dict | None = None) -> SkillResult | None:
         answer = chat_webcam_command(text)
         if answer:
             return SkillResult("webcam-recorder", answer)
+    # 21.11.2026: "which devices are on my network" -> LAN Scanner (Mantra) through lanscan (skill lan-scan)
+    from .lan_scan import chat_lan_command
+    answer = chat_lan_command(text)
+    if answer:
+        return SkillResult("lan-scan", answer)
     return None
