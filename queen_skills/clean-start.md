@@ -1,0 +1,9 @@
+# Skill: clean-start (Mac; local, no model, $0)
+
+Marko, 21.11.2026: "write a clean start app so there is an app which actually sets up the whole macOS to start up without any startup demons, any startup anything ... there is another option for normal start ... a list of everything which starts up automatically." The app is Clean Start (Mantra).
+**When:** "open clean start", "what is clean start", "show me what starts on my Mac", "startup items", "login items", "clean boot".
+**What:** /Applications/Clean Start (Mantra).app (repo CLEAN_START, v2 installed on 21.11.2026, v3 in work). One window: CLEAN START (every non-Apple item that starts by itself is switched off for the next login or boot), NORMAL START (everything back as it was, except what Marko switched himself) and a list of every startup item, each with its own switch. Apple's own items are never touched. Nothing that runs now is stopped: every change is for the next start.
+**Steps:** open it with the plain command line `open app cleanstart` (a star app, row `cleanstart`, Star API :8863); if the star does not know the row yet, say so and ask Claude Code. To answer a question about what it does, use this text; the repo's TAKEOVER.md (~/Developer/CLEAN_START) has the rest.
+**Never:** you do NOT press CLEAN START or NORMAL START, and you do not switch any row. That press is Marko's alone: it changes what starts at his next boot. Say "CLEAN START is yours to press" and leave the window as it is. Also never run the app's `--clean`, `--normal` or `--set` from the command line.
+**Not proven yet:** a real Clean on his real items followed by a real restart; Marko's test is: press CLEAN START once, restart, look, press NORMAL START, restart.
+**Traps:** the window's X quits the app. Amber PERMISSIONS top right means Automation of System Events is missing: that macOS prompt is Marko's, never answer it.
