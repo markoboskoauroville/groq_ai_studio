@@ -46,6 +46,15 @@ def _ableton_help(_context: dict | None = None) -> SkillResult:
     )
 
 
+def _webcam_help(_context: dict | None = None) -> SkillResult:
+    return SkillResult(
+        "webcam-recorder",
+        "Webcam Recorder (Mantra) through its API on 127.0.0.1:8867 (the app must be running):\n"
+        "- webcam recorder status\n- start webcam recording / stop webcam recording\n"
+        "- webcam recorder sony status (five measured stages)\n- connect the sony in the webcam recorder / disconnect the sony in the webcam recorder",
+    )
+
+
 def _gemini_help(_context: dict | None = None) -> SkillResult:
     from . import gemini_image
     return SkillResult("gemini-image", gemini_image.help_text())
@@ -85,6 +94,15 @@ SKILLS = (
         handler=_ableton_help,
     ),
     Skill(
+        skill_id="webcam-recorder",
+        description=(
+            "Webcam Recorder (Mantra) on 127.0.0.1:8867: status, start/stop webcam recording, and the Sony in its overlay "
+            "(sony status with measured stages, connect, disconnect). Any sentence naming the webcam recorder."
+        ),
+        commands=frozenset({"webcam recorder help", "webcam help"}),
+        handler=_webcam_help,
+    ),
+    Skill(
         skill_id="gemini-image",
         description=(
             "Free Gemini pictures in Marko's Chrome profiles (references attached, Create image, aspect ratio, "
@@ -117,4 +135,10 @@ def dispatch(text: str, context: dict | None = None) -> SkillResult | None:
     for skill in SKILLS:
         if command in skill.commands:
             return skill.handler(context)
+    # 21.11.2026: any sentence naming the webcam (recorder) goes to its own API hand; None = not one of its phrases
+    if "webcam" in command or "web cam" in command:
+        from .webcam_recorder import chat_webcam_command
+        answer = chat_webcam_command(text)
+        if answer:
+            return SkillResult("webcam-recorder", answer)
     return None
