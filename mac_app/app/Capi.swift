@@ -79,11 +79,14 @@ final class Capi: ObservableObject {
     @Published var routerNote = ""
     static let maxFile = 20 * 1024 * 1024
     @Published var creditNote = ""
+    @Published var statusLine = ""                // v32: the provider's last real answer (gcloud), shown instead of an estimate
+    @Published var intro = ""                     // v32: what answers in this tab and what it costs (from the backend)
     private var poller: Task<Void, Never>?
     private var shownSig = ""                    // what is on screen: count + last text, so a poll redraws only on change
     private var busyIds: Set<String> = []
 
     var creditText: String {
+        if !statusLine.isEmpty { return statusLine }   // v32: never an unverifiable balance presented as money left
         let ex = creditExpiry.isEmpty ? "" : ", to " + creditExpiry
         let label = (provider == "gcloud" || provider == "oxyy") ? "\(providerName) estimate" : providerName
         return left.map { String(format: "\(label) ($%.2f left", $0) + ex + ")" } ?? "\(label) ($ ?)"
@@ -216,6 +219,8 @@ final class Capi: ObservableObject {
         provider = (j["provider"] as? String) ?? provider
         providerName = (j["name"] as? String) ?? providerName
         creditNote = (j["note"] as? String) ?? ""
+        statusLine = (j["status_line"] as? String) ?? ""
+        intro = (j["intro"] as? String) ?? ""
         creditExpiry = (j["expires"] as? String) ?? ""
         if let l = j["providers"] as? [[String: Any]] {
             let p = l.compactMap { x -> ProviderItem? in
@@ -697,7 +702,8 @@ struct CapiConversation: View {
             .accessibilityIdentifier("capi-topic")
             Hairline()
         MessageList(messages: c.messages,
-                    empty: "Claude Code on your API credit. Ask for anything; it works in the folder above, remembers the chat across days, and shows one line per tool it uses. Several chats can work at the same time: the list on the left.",
+                    empty: (c.intro.isEmpty ? "The provider chosen above answers here, paid from its own credit." : c.intro)
+                        + " It works in the folder above, remembers the chat across days, and shows one line per tool it uses. Several chats can work at the same time: the list on the left.",
                     notice: c.notice) { EmptyView() }
         }
     }

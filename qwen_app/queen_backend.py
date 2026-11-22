@@ -4,6 +4,7 @@ from __future__ import annotations
 import ast
 import json
 import os
+import re
 import subprocess
 import sys
 import time
@@ -109,16 +110,15 @@ def _commit_and_push(files: list[str], message: str) -> tuple[bool, list[str]]:
         log.append(f"git add {path}: {'OK' if ok else 'FAIL'} — {output}")
         if not ok:
             return False, log
-    ok, output = _git(["add", "version.json"])
-    log.append(f"git add version.json: {'OK' if ok else 'FAIL'} — {output}")
-    if not ok:
-        return False, log
+    for needed in VERSION_FILES:        # one version number: the mac-app run refuses a version.json without App.swift
+        ok, output = _git(["add", needed])
+        log.append(f"git add {needed}: {'OK' if ok else 'FAIL'} — {output}")
+        if not ok:
+            return False, log
     ok, output = _git(["diff", "--cached", "--stat"])
     if not output.strip():
         return True, [*log, "Nothing to commit (files unchanged)"]
-    commit_message = message.strip() or "Update Queen Python runtime"
-    if "Co-authored-by:" not in commit_message:
-        commit_message += "\n\nCo-authored-by: Copilot <223556219+Copilot@users.noreply.github.com>"
+    commit_message = _commit_message(message)
     ok, output = _git(["commit", "-m", commit_message])
     log.append(f"git commit: {'OK' if ok else 'FAIL'} — {output[:200]}")
     if not ok:
@@ -136,9 +136,44 @@ def _commit_and_push(files: list[str], message: str) -> tuple[bool, list[str]]:
     return ok, log
 
 
+VERSION_FILES = ("version.json", "mac_app/app/App.swift")
+_SWIFT_VERSION = re.compile(r"^let VERSION = (\d+)$", re.M)
+
+
+def _commit_message(message: str, provider: str = "", model: str = "") -> str:
+    """Audit 22.11.2026: the commit names whoever wrote the change. Before, every commit got a hard-coded Copilot trailer."""
+    text = (message or "").strip() or "Update Queen Python runtime"
+    if provider and "Written-by:" not in text:
+        text += f"\n\nWritten-by: Queen auto-update ({provider} {model})".rstrip()
+    return text
+
+
+def _version_preflight() -> str:
+    """'' when version.json and App.swift agree, so a bump can write both; else why not (checked BEFORE any file is written)."""
+    try:
+        v = int(_version_data()["version"])
+        m = _SWIFT_VERSION.search((REPO_ROOT / "mac_app" / "app" / "App.swift").read_text(encoding="utf-8"))
+    except (OSError, RuntimeError) as exc:
+        return f"No update: the version files are not ready ({exc})"
+    if not m or int(m.group(1)) != v:
+        return f"No update: App.swift VERSION and version.json ({v}) disagree; fix them first"
+    return ""
+
+
 def _bump_version(files: list[str], message: str) -> int:
+    """version.json AND mac_app/app/App.swift together, or nothing (the mac-app run checks they are one number)."""
     data = _version_data()
     version = int(data.get("version", 0)) + 1
+    swift = REPO_ROOT / "mac_app" / "app" / "App.swift"
+    try:
+        swift_text = swift.read_text(encoding="utf-8")
+    except OSError as exc:
+        raise RuntimeError(f"No version bump: {swift} is needed with version.json ({exc})") from exc
+    m = _SWIFT_VERSION.search(swift_text)
+    if not m:
+        raise RuntimeError(f"No version bump: no 'let VERSION = N' line in {swift}")
+    if int(m.group(1)) != version - 1:
+        raise RuntimeError(f"No version bump: App.swift says {m.group(1)}, version.json {version - 1}")
     timestamp = time.strftime("%Y-%m-%dT%H:%M:%S%z")
     history = data.get("log", [])
     if not isinstance(history, list):
@@ -152,15 +187,58 @@ def _bump_version(files: list[str], message: str) -> int:
     data.update(version=version, updated_at=timestamp, log=history[-50:])
     tmp = VERSION_FILE.with_suffix(".tmp")
     tmp.write_text(json.dumps(data, indent=2), encoding="utf-8")
+    stmp = swift.with_suffix(".swift.tmp")
+    stmp.write_text(_SWIFT_VERSION.sub(f"let VERSION = {version}", swift_text, count=1), encoding="utf-8")
     tmp.replace(VERSION_FILE)
+    stmp.replace(swift)
     return version
 
 
-def _ci(code: str, filename: str) -> tuple[bool, list[str]]:
+GATE_TESTS = ("test_queen_backend.py", "test_capi_features.py", "test_pair_chat.py", "test_ableton_skill.py",
+              "test_audit_fixes.py")
+
+
+def _ci(code: str, filename: str, old_code: str | None = None, run_tests: bool = True) -> tuple[bool, list[str]]:
+    """The self-update gate (restored 22.11.2026; v31 had cut it to ast.parse): Python parses, the file is not cut to
+    less than 30 % of the old one, and the install-gate tests pass on a copy with the new file. Nothing is written
+    to the real files before all three pass."""
     try:
         ast.parse(code, filename=filename)
     except SyntaxError as exc:
         return False, [f"{filename}:{exc.lineno}: {exc.msg}"]
+    if old_code is None:
+        try:
+            old_code = (REPO_DIR / filename).read_text(encoding="utf-8")
+        except OSError:
+            old_code = ""
+    if old_code and len(code.encode()) < 0.3 * len(old_code.encode()):
+        return False, [f"{filename}: the new file is {len(code.encode())} bytes, less than 30 % of the old "
+                       f"{len(old_code.encode())} (a cut-off file?)"]
+    if not run_tests:
+        return True, []
+    import shutil
+    import tempfile
+    with tempfile.TemporaryDirectory(prefix="queen-gate-") as tmp:
+        copy = Path(tmp) / "qwen_app"
+        shutil.copytree(REPO_DIR, copy, ignore=shutil.ignore_patterns("__pycache__"))
+        shutil.copytree(REPO_ROOT / "queen_skills", Path(tmp) / "queen_skills")
+        shutil.copytree(REPO_ROOT / "mac_app", Path(tmp) / "mac_app", ignore=shutil.ignore_patterns("build"))
+        shutil.copy2(REPO_ROOT / "qwen", Path(tmp) / "qwen")
+        shutil.copy2(REPO_ROOT / "version.json", Path(tmp) / "version.json")
+        target = copy / filename
+        target.parent.mkdir(parents=True, exist_ok=True)
+        target.write_text(code, encoding="utf-8")
+        for test in GATE_TESTS:
+            if not (copy / test).is_file():
+                continue
+            try:
+                r = subprocess.run([sys.executable, str(copy / test)], cwd=copy, capture_output=True, text=True,
+                                   timeout=600, env={**os.environ, "QUEEN_GATE": "1"})
+            except subprocess.TimeoutExpired:
+                return False, [f"{test}: timed out with the new {filename}"]
+            if r.returncode != 0:
+                tail = (r.stdout + r.stderr).strip().splitlines()[-3:]
+                return False, [f"{test} fails with the new {filename}: " + " | ".join(tail)]
     return True, []
 
 
@@ -196,7 +274,9 @@ def health():
 @app.get("/api/skills/list")
 def list_python_skills():
     from queen_python_skills import catalog
-    return jsonify(ok=True, skills=catalog())
+    import queen_brain
+    # skills = the Python skills (v31 shape); queen_skills = her written skills, loaded by her brain (v32)
+    return jsonify(ok=True, skills=catalog(), queen_skills=sorted(queen_brain.skills()))
 
 
 @app.get("/api/ableton/capabilities")
@@ -348,6 +428,10 @@ def run_auto_update():
         except Exception as exc:
             return jsonify(ok=False, error=f"Local Claude Code did not finish: {exc}"), 502
         return jsonify(ok=True, via="local Claude Code", cost_usd=0, report=result["answer"])
+    if not body.get("dry_run", False):
+        why = _version_preflight()
+        if why:
+            return jsonify(ok=False, error=why), 409
     target_files = body.get("target_files")
     status, payload = auto_updater.run_surgical_auto_update(
         instruction=instruction,
@@ -371,8 +455,17 @@ def run_auto_update():
     return jsonify(payload), status
 
 
+# v32 (audit 22.11.2026): the Groq-free routes lost in v31, each in its own guard. Registered AFTER this module's own
+# routes, so where two modules name the same path (supervisor's old /api/skills/list) the v31 meaning answers first.
+import restored_routes  # noqa: E402
+restored_routes.register(app)
+
+
 def main() -> None:
     migrate_legacy_state()
+    import pause_state                  # every hand honours PAUSE (wraps subprocess and urlopen); runtime only
+    pause_state.install()
+    restored_routes.register_runtime(app)
     HOME.mkdir(parents=True, exist_ok=True)
     port = _current_port()
     (HOME / "backend_port").write_text(f"{port}\n", encoding="utf-8")

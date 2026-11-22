@@ -93,13 +93,13 @@ def route(allow_api=False):
     raise NeedConsent()
 
 
-def ask(question, model="sonnet", cwd=None, timeout=600, permission_mode=None, allowed_tools=None):
+def ask(question, model="sonnet", cwd=None, timeout=600, permission_mode=None, allowed_tools=None, system=None):
     """Ask the local Claude Code (headless, on the plan). Returns {answer, duration_ms, ...}."""
     if not status()["reachable"]:
         raise NeedConsent()
     WORKDIR.mkdir(parents=True, exist_ok=True)
     cmd = [str(CLAUDE_BIN), "-p", question, "--output-format", "json", "--no-session-persistence",
-           "--model", model or "sonnet", "--append-system-prompt", HEADLESS_NOTE]
+           "--model", model or "sonnet", "--append-system-prompt", HEADLESS_NOTE + ("\n\n" + system if system else "")]
     if permission_mode:
         cmd += ["--permission-mode", permission_mode]
     if allowed_tools:

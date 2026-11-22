@@ -740,12 +740,33 @@ def _stop_all():
 atexit.register(_stop_all)
 
 
+def _local_first(c, text):
+    """The ONE local router (local_router.route) for every CAPI entry point; hands only when Queen is on for the chat
+    (v25: a QUEEN: OFF chat bypasses her). A hit is stored in the chat at $0 and returned; None = ask the provider."""
+    import local_router
+    hit = local_router.route(text, {"cwd": c.room.get("cwd", "")}, hands=_queen_on(c.room))
+    if hit is None:
+        return None
+    from queen_python_skills import SkillResult
+    result = SkillResult(hit.skill_id, hit.answer)
+    c.complete_local_skill(text, result)
+    return result
+
+
 def run_turn(room, text, files=None, pair=None):
     """Streaming form of one turn (the old /api/capi/turn): send, then yield what lands until the answer is done."""
     c = _conv(room["id"])
     if not c:
         yield {"error": "no such conversation"}
         return
+    if not files and not pair:              # audit 22.11.2026: /ask and /turn skipped the local skills and paid a provider
+        result = _local_first(c, text)
+        if result is not None:
+            yield {"text": result.answer, "label": f"PYTHON · {result.skill_id}"}
+            yield {"cost": 0.0, "total": c.room.get("total", 0.0), "left": _credit_left(), "provider": get_provider(),
+                   "local_skill": result.skill_id}
+            yield {"done": 1}
+            return
     with c.lock:
         n = len(c.room["messages"]) + 1
         if not c.send(text, files, pair):
@@ -844,6 +865,17 @@ def autoname(room):
     return {"title": title, "cost": cost, "provider": prov, "left": _credit_left(prov)}
 
 
+# What answers in the CAPI window and what it costs (audit 22.11.2026, replaces "Claude Code on your API credit").
+_LOCAL = ("Known commands (list skills, current folder, ABLETON:, GEMINI IMAGE:, webcam recorder, which devices are on my "
+          "network) are answered by Queen's Python skills on this Mac at $0.")
+INTRO = {
+    "gcloud": "Gemini on Google Cloud answers here, paid from the Google Cloud credit; the header shows Google's last real "
+              "answer. " + _LOCAL,
+    "anthropic": "Claude Code on the Anthropic API answers here, paid from your API credit. " + _LOCAL,
+    "oxyy": "Claude through Oxyy answers here, paid from your Oxyy balance (counted down from the amount you typed). " + _LOCAL,
+}
+
+
 def _credit_info():
     cur = get_provider()
     provs = []
@@ -859,18 +891,21 @@ def _credit_info():
     if cur == "gcloud":
         import gcloud_chat
         c = gcloud_chat.credit_info()
-        note = (f"Google Cloud free credit estimate, project antigravity-cloud-offload: ${c['start_usd']:.2f} on "
-                f"{c['snapshot']} (Billing snapshot) minus Queen's token-price ledger; expires "
-                f"{gcloud_chat.expiry_text()}. This is not a live balance.")
+        note = (f"{gcloud_chat.status_line()}. Google gives no live balance, so the header shows Google's last real "
+                f"answer. The old estimate was ${c['start_usd']:.2f} (Billing snapshot {c['snapshot']}, project "
+                f"antigravity-cloud-offload) minus Queen's token-price ledger = ${c['left']:.2f}; it is not a balance. "
+                f"The free credit expires {gcloud_chat.expiry_text()}.")
     expires = ""
     if cur == "gcloud":
         import gcloud_chat
         expires = gcloud_chat.expiry_text()
     out = {"expires": expires, "left": left, "has_key": bool(_key(cur)), "provider": cur, "name": PROVIDERS[cur]["name"],
-           "providers": provs, "note": note}
+           "providers": provs, "note": note, "status_line": "", "intro": INTRO.get(cur, "")}
     if cur == "gcloud":
         import gcloud_chat
         out["credit"] = gcloud_chat.credit_info()
+        out["last_answer"] = gcloud_chat.last_answer()
+        out["status_line"] = gcloud_chat.status_line()
     return out
 
 
@@ -1151,10 +1186,8 @@ def register(app):
         with c.lock:
             router_on = bool(c.room.get("router_on", False))
         if not b.get("files"):
-            from queen_python_skills import dispatch
-            result = dispatch(text, {"cwd": c.room.get("cwd", "")})
+            result = _local_first(c, text)
             if result is not None:
-                c.complete_local_skill(text, result)
                 return jsonify({"ok": True, **c.state(), "local_skill": result.skill_id})
         route = None
         if router_on:

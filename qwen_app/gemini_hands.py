@@ -7,7 +7,7 @@ so this module gives Gemini a function-calling loop with four tools:
     list_files(path=".")              entries of a folder (max 300)
     read_file(path, start=1, end=0)   a text file (max 60,000 characters)
     write_file(path, content)         create or overwrite a text file (parent folders made)
-    run_shell(command, timeout=60)    /bin/zsh -lc in the folder, timeout max 180 s, output tail 8,000 characters
+    run_shell(command, timeout=60)    ONE allowed command, no shell (v32), timeout max 180 s, output tail 8,000 characters
 
 Confinement: every path is resolved (symlinks too) and must stay inside the chat's folder; the folder itself must be inside
 the home folder and is never the home folder itself. run_shell runs with the folder as cwd, refuses sudo / su / shutdown /
@@ -16,6 +16,11 @@ launchctl / diskutil and absolute or ~ paths outside the folder (system tool fol
 Gemini on Marko's own task. Every call is booked on the Google Cloud ledger (gcloud_chat.ledger), the loop stops between
 calls when STOP is pressed or the pair's cost cap is reached, and a running shell command is killed (its process group).
 Keys come from gcloud_chat._keys() and are never printed.
+
+v32 (audit 22.11.2026): run_shell was `zsh -lc <string>` behind a string check, so `cd $HOME`, `$(...)`, backticks, `;`
+and pipes walked out of the folder. Now there is no shell: the command is split with shlex, shell characters are refused,
+argv[0] must be on ALLOWED_CMDS (git and python3 with their own allowed forms), every path argument must stay inside the
+folder, and the process is started from the argument list.
 """
 from __future__ import annotations
 import re
@@ -36,6 +41,17 @@ MAX_READ = 60_000
 MAX_OUT = 8_000
 ALLOWED_ABS = ("/usr/", "/bin/", "/sbin/", "/opt/homebrew/", "/dev/null", "/tmp/", "/private/tmp/", "/Library/Developer/",
                "/Applications/Xcode")
+# v32: the only commands run_shell starts (no shell). python3 runs a script inside the folder (still a full program:
+# the model wrote it in the folder) or -m of the modules below; git only the local subcommands below.
+ALLOWED_CMDS = {"ls", "cat", "head", "tail", "wc", "grep", "rg", "find", "sort", "uniq", "diff", "file", "stat", "pwd",
+                "echo", "true", "false", "sleep", "mkdir", "touch", "cp", "mv", "rm", "sed", "tr", "cut", "python3", "python",
+                "node", "git", "pdflatex", "xelatex", "pandoc", "ffmpeg", "ffprobe", "sips", "pdftotext", "pdfinfo", "qpdf",
+                "zip", "unzip", "tar", "shasum", "md5", "date", "basename", "dirname", "realpath", "jq"}
+PY_MODULES = {"pytest", "unittest", "py_compile", "json.tool", "compileall", "venv"}
+GIT_SUBCOMMANDS = {"status", "diff", "log", "show", "add", "commit", "init", "rev-parse", "branch", "ls-files", "restore",
+                   "mv", "rm", "blame", "grep"}
+FIND_REFUSED = {"-exec", "-execdir", "-ok", "-okdir", "-delete", "-fprint", "-fprintf", "-fls"}
+SHELL_CHARS = set(";|&`$<>(){}\\\n*?!~")
 REFUSED_WORDS = {"sudo", "su", "shutdown", "reboot", "halt", "launchctl", "diskutil", "mkfs", "dd", "csrutil", "osascript"}
 
 DECLS = [
@@ -47,8 +63,10 @@ DECLS = [
     {"name": "write_file", "description": "Create or overwrite a text file inside the working folder with the full content.",
      "parameters": {"type": "object", "properties": {"path": {"type": "string"}, "content": {"type": "string"}},
                     "required": ["path", "content"]}},
-    {"name": "run_shell", "description": "Run a shell command in the working folder (zsh). Use it to run and test programs. "
-                                         "Output (stdout+stderr) and the exit code come back.",
+    {"name": "run_shell", "description": "Run ONE allowed command in the working folder, without a shell: no pipes, "
+                                         "redirects, ;, &&, $, backticks or globs; paths stay inside the folder. Allowed: "
+                                         + ", ".join(sorted(ALLOWED_CMDS)) + " (python3 runs a script in the folder or "
+                                         "-m pytest/unittest; git only local subcommands). Output and exit code come back.",
      "parameters": {"type": "object", "properties": {"command": {"type": "string"},
                                                       "timeout": {"type": "integer", "description": "seconds, max 180"}},
                     "required": ["command"]}},
@@ -80,25 +98,62 @@ def _inside(root, rel):
 
 
 def _shell_guard(root, cmd):
+    """'' when cmd may run, else the reason (v32 allowlist, see the module doc). Returns the argv through parse_command."""
+    return parse_command(root, cmd)[1]
+
+
+def parse_command(root, cmd):
+    """-> (argv, '') or (None, reason)."""
+    bad = sorted({c for c in cmd if c in SHELL_CHARS})
+    if bad:
+        return None, f"refused: no shell here, these characters are not allowed: {' '.join(repr(c) for c in bad)}"
     try:
-        toks = shlex.split(cmd, posix=True)
-    except ValueError:
-        toks = cmd.split()
-    for t in toks:
-        w = os.path.basename(t)
-        if w in REFUSED_WORDS:
-            return f"refused: '{w}' is not allowed for the slave"
-        for part in t.replace("=", " ").split():
-            if part.startswith("~") or part.startswith("/"):
-                full = os.path.realpath(os.path.expanduser(part))
+        argv = shlex.split(cmd, posix=True)
+    except ValueError as exc:
+        return None, f"refused: {exc}"
+    if not argv:
+        return None, "refused: empty command"
+    exe = argv[0]
+    name = os.path.basename(exe)
+    if "/" in exe and not any(os.path.realpath(exe).startswith(a.rstrip("/")) for a in ALLOWED_ABS[:4]):
+        return None, f"refused: {exe} is not a system program"
+    if name in REFUSED_WORDS or name not in ALLOWED_CMDS:
+        return None, f"refused: '{name}' is not on the allowed list ({', '.join(sorted(ALLOWED_CMDS))})"
+    rest = argv[1:]
+    if name in ("python3", "python"):
+        if not rest:
+            return None, "refused: python needs a script inside the folder"
+        if rest[0] == "-c":
+            return None, "refused: python3 -c is not allowed; write the script into the folder and run it"
+        if rest[0] == "-m":
+            if len(rest) < 2 or rest[1] not in PY_MODULES:
+                return None, f"refused: python3 -m only for {', '.join(sorted(PY_MODULES))}"
+        elif rest[0].startswith("-"):
+            return None, f"refused: python3 option {rest[0]}"
+    if name == "git" and (not rest or rest[0] not in GIT_SUBCOMMANDS):
+        return None, f"refused: git only {', '.join(sorted(GIT_SUBCOMMANDS))} (no push, pull, remote, config)"
+    if name == "find" and any(a in FIND_REFUSED for a in rest):
+        return None, "refused: find without -exec / -delete"
+    if name == "sed" and any(a.startswith("-") and "e" in a.lstrip("-") and a not in ("-E",) for a in rest):
+        return None, "refused: sed -e scripts are not allowed here; pass the expression without -e"
+    for a in rest:
+        for part in a.replace("=", " ").split():
+            if part.startswith("-") and "/" not in part:
+                continue
+            if ".." in part.replace("...", "").split("/"):
+                return None, "refused: '..' would leave the working folder"
+            if part.startswith("/"):
+                full = os.path.realpath(part)
                 if full == root or full.startswith(root + os.sep):
                     continue
-                if any(full.startswith(a.rstrip("/")) for a in ALLOWED_ABS) or any(part.startswith(a) for a in ALLOWED_ABS):
+                if full == "/dev/null":
                     continue
-                return f"refused: the path {part} is outside the working folder"
-    if ".." in cmd.replace("...", ""):
-        return "refused: '..' would leave the working folder"
-    return ""
+                return None, f"refused: the path {part} is outside the working folder"
+            if "/" in part or os.path.exists(os.path.join(root, part)):
+                full = os.path.realpath(os.path.join(root, part))
+                if not (full == root or full.startswith(root + os.sep)):
+                    return None, f"refused: {part} leads outside the working folder"
+    return argv, ""
 
 
 def tool(root, name, args, stop_event=None):
@@ -128,12 +183,12 @@ def tool(root, name, args, stop_event=None):
             cmd = str(args.get("command") or "").strip()
             if not cmd:
                 return {"error": "empty command"}, "run_shell (empty)"
-            why = _shell_guard(root, cmd)
+            argv, why = parse_command(root, cmd)
             if why:
                 return {"error": why}, f"run_shell REFUSED {cmd[:70]}"
             t = max(1, min(180, int(args.get("timeout") or 60)))
             env = {k: v for k, v in os.environ.items() if not k.startswith(("CLAUDE", "ANTHROPIC", "GEMINI", "GOOGLE"))}
-            pr = subprocess.Popen(["/bin/zsh", "-lc", cmd], cwd=root, env=env, stdin=subprocess.DEVNULL,
+            pr = subprocess.Popen(argv, cwd=root, env=env, stdin=subprocess.DEVNULL,
                                   stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True, start_new_session=True)
             t0 = time.time()
             while pr.poll() is None:

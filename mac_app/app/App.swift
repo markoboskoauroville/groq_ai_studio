@@ -8,7 +8,7 @@ import SwiftUI
 import AppKit
 import ApplicationServices
 
-let VERSION = 31
+let VERSION = 32
 let APP_NAME = "Queen"
 
 enum Ink {
@@ -112,11 +112,7 @@ struct TopRow: View {
                 .lineLimit(1)
             HStack(spacing: 6) {
                 Spacer().frame(width: 64)                   // the traffic lights
-                Text("ON").foregroundStyle(Ink.green).unit().padding(.horizontal, 6)
-                Word(text: "OFF", id: "off", color: Ink.grey, help: "Quit Queen: her server on 8765 and her backend on 8766 stop") {
-                    // the server and backend stop in applicationWillTerminate, only after Marko confirmed the Quit guard
-                    DispatchQueue.main.async { NSApp.terminate(nil) }
-                }
+                // v32: no ON / OFF (Marko, 16.11.2026, MANTRA_MANIFEST no-on-off-button.md): the X on the right quits Queen
                 Spacer()
                 Word(text: "TOP", id: "top", color: onTop ? Ink.green : Ink.grey,
                      help: "Always on top: green, the window stays above every other window") {
@@ -128,10 +124,13 @@ struct TopRow: View {
                         Permissions.openMissing()
                     }
                 }
+                // the app's own X quits the whole app (rule no-on-off-button.md); the v28 quit guard still asks first, and
+                // her server and backend stop in applicationWillTerminate only after the Quit is confirmed
                 Image(systemName: "xmark").font(.system(size: 12, weight: .semibold)).foregroundStyle(Ink.grey)
                     .frame(width: 28, height: 28).contentShape(Rectangle())
-                    .onTapGesture { NSApp.keyWindow?.performClose(nil) }
-                    .axButton("Close window", id: "close") { (NSApp.keyWindow ?? NSApp.windows.first { $0.isVisible })?.performClose(nil) }
+                    .onTapGesture { DispatchQueue.main.async { NSApp.terminate(nil) } }
+                    .axButton("Quit Queen", id: "quit") { DispatchQueue.main.async { NSApp.terminate(nil) } }
+                    .help("Quit Queen: her server on 8765 and her backend on 8766 stop (she asks first)")
                     .pressHover()
             }
             .font(.system(size: 12, weight: .bold, design: .monospaced))

@@ -10,7 +10,7 @@ APP="${GROQ_DIR}/qwen_app/app.py"
 SWIFT_APP="/Applications/Queen.app"
 
 if [[ "$(uname)" == "Darwin" && -z "${QWEN_BACKEND:-}" && -z "${QWEN_STANDALONE:-}" && -d "${SWIFT_APP}" ]]; then
-    if pgrep -f "${SWIFT_APP}/Contents/MacOS/GroqAIStudio" >/dev/null 2>&1; then
+    if pgrep -f "${SWIFT_APP}/Contents/MacOS/Queen" >/dev/null 2>&1; then
         echo "Queen is running: the Swift app serves http://127.0.0.1:8765 (its backend is on 8766)."
     else
         open -g "${SWIFT_APP}" && echo "Queen started: the Swift app serves http://127.0.0.1:8765 (its backend is on 8766)."

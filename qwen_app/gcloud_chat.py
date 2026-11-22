@@ -260,11 +260,44 @@ def _claude_content(text, files):
 
 
 # ------------------------------------------------------------------ calls
+STATUS_FILE = Path.home() / ".queen" / "provider_status.json"
+
+
+def record_answer(code, message=""):
+    """Audit 22.11.2026: the header shows Google's LAST REAL ANSWER, not an estimate presented as money left."""
+    try:
+        STATUS_FILE.parent.mkdir(parents=True, exist_ok=True)
+        STATUS_FILE.write_text(json.dumps({"code": int(code), "message": _scrub(str(message))[:200], "at": time.time()}))
+    except OSError as exc:
+        print(f"[gcloud] could not record the last answer: {exc}", flush=True)
+
+
+def last_answer():
+    try:
+        return json.loads(STATUS_FILE.read_text())
+    except (OSError, ValueError):
+        return None
+
+
+def status_line():
+    a = last_answer()
+    if not a:
+        return "Gemini: no answer recorded yet"
+    when = time.strftime("%-d.%-m.%Y %H:%M", time.localtime(a.get("at") or 0))
+    if a.get("code") == 200:
+        return f"Gemini: last answer OK ({when})"
+    msg = (a.get("message") or "").lower()
+    short = "credits depleted" if ("depleted" in msg or "prepay" in msg) else (a.get("message") or "")[:60]
+    return f"Gemini: {a.get('code')}, {short} ({when})"
+
+
 def _post(url, payload, headers, timeout=120):
     req = urllib.request.Request(url, method="POST", data=json.dumps(payload).encode(),
                                  headers={"content-type": "application/json", "user-agent": "queen/24", **headers})
     with urllib.request.urlopen(req, timeout=timeout) as x:
-        return json.loads(x.read().decode())
+        out = json.loads(x.read().decode())
+    record_answer(200, "OK")
+    return out
 
 
 def _http_err(exc):
@@ -275,6 +308,7 @@ def _http_err(exc):
         body = (j.get("error") or {}).get("message") or body
     except Exception:
         pass
+    record_answer(exc.code, body)
     return exc.code, _scrub(body)[:220]
 
 

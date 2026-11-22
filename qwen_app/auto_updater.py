@@ -1661,7 +1661,7 @@ def run_surgical_auto_update(
             sync_logs = sync_local_installation(active_git_root)
             _, git_logs = git_commit_and_push_fn(
                 [f"qwen_app/{f}" for f in changed_files.keys()],
-                f"{final_version_str}: {commit_msg}",
+                f"{final_version_str}: {commit_msg}\n\nWritten-by: Queen auto-update ({chosen_provider} {chosen_model})",
             )
             for gl in git_logs:
                 term_print_fn(f"  \033[1;34m[Stage 5 · Git]\033[0m {gl}")

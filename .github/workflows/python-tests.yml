@@ -1,0 +1,28 @@
+# python-tests.yml (audit 22.11.2026): Queen's Python runtime was never tested by GitHub; only ./install.sh ran the tests
+# on the Mac. Every push to main that touches the runtime, her skills or the launchers runs the install-gate tests here,
+# including the pin that fails when a route named in queen_skills/ is not registered.
+name: python-tests
+on:
+  push:
+    branches: [main]
+    paths: ["qwen_app/**", "queen_skills/**", "install.sh", "qwen", "requirements.txt", "mac_app/install.sh",
+            "mac_app/app/App.swift", "mac_app/app/Capi.swift", "mac_app/app/core/Net.swift", "version.json",
+            ".github/workflows/python-tests.yml"]
+  workflow_dispatch:
+jobs:
+  test:
+    runs-on: macos-15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install
+        run: python -m pip install --quiet -r requirements.txt
+      - name: Install-gate tests
+        run: |
+          python qwen_app/test_capi_features.py
+          python qwen_app/test_ableton_skill.py
+          python qwen_app/test_pair_chat.py
+          python qwen_app/test_queen_backend.py
+          python qwen_app/test_audit_fixes.py

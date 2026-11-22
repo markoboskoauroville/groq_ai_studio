@@ -34,9 +34,10 @@ check(
     "health identifies the Python runtime",
     client.get("/health").get_json()["app"] == "Queen Python skills",
 )
-check(
-    "legacy Groq chat API is absent",
-    client.post("/api/chat", json={"messages": []}).status_code == 404,
+_chat = client.post("/api/chat", json={"messages": []})
+check(  # v32 (22.11.2026, decision B): /api/chat is the local Claude Code brain, not the retired Groq chat
+    "/api/chat is the local brain, not the Groq chat",
+    _chat.status_code == 200 and b"empty message" in _chat.data and "groq" not in sys.modules,
 )
 check(
     "legacy remote-send API is absent",
