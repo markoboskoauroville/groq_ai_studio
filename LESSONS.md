@@ -1,3 +1,28 @@
+## 22.11.2026: the audit after v31 (bugs by cause, so the next AI does not repeat them)
+
+- **A rewrite that drops routes breaks every caller silently.** v31 kept 5 of the old server's route groups; 64 of the
+  81 routes her skills name, the `queen` CLI and `/api/claude/*` answered 404 for three days. Now a test reads every
+  route named in queen_skills/ and fails the build when one is missing. Never remove a route without removing or
+  rewriting the skill that names it in the same commit.
+- **A hand-kept install list loses modules.** v31's install.sh copied 14 named files; the modules the skills call were
+  not installed. install.sh now copies every runtime module (tests and the retired app excepted).
+- **Two entry points, two routers.** The local Python skills ran only from the window; `/api/capi/ask` and `/turn` sent
+  "list skills" to a paid provider. One router (`local_router.route`) is called by every entry point.
+- **A gate that says more than it checks.** The update gate was documented as AST + HTML + size and was `ast.parse`
+  only. A gate runs the real tests on a copy before writing.
+- **One version number means both files.** Bumping version.json alone breaks the next mac-app run; bump both or none.
+- **A hard-coded co-author trailer lies.** Every self-update commit said Copilot whatever wrote it.
+- **A string check is not a sandbox.** `zsh -lc` behind a path check let `cd $HOME`, `$(...)` and `;` through. No shell,
+  an allowlist, parsed arguments.
+- **A UI retry must not count an error as success.** The CAPI tab marked the credit as loaded on the proxy's 502 JSON
+  during start (v33's retry did nothing until v34 checked for `provider`).
+- **An estimate shown as money left is a wrong result.** The header said $221.38 left while Google answered 402
+  depleted. Show the provider's last real answer; explain the estimate in the tooltip.
+- **installers must wait for the quit guard.** `osascript quit; sleep 1; rm -rf` deleted a running app behind its
+  "Are you sure?" dialog.
+- **Rounds of this audit:** Phase 1 findings (17) -> master decisions A-E -> v32 (all fix-now + A-E, CI green) -> v33
+  (launch race seen in the real window after install) -> v34 (the retry stopped at an error) -> self-check skill.
+
 ## 21.11.2026: Gemini image attach + profile rotation
 
 - Gemini's "Upload files" clicks a hidden `<input type=file>`; Chrome's `Page.fileChooserOpened` did not come back through the

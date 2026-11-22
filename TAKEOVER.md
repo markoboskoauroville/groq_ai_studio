@@ -1,3 +1,52 @@
+## Her shape after the audit of 22.11.2026 (v32-v34): READ THIS FIRST
+
+Marko (22.11.2026): "Queen has changed a lot since last year work on it. I was working with other AIs on it. Please
+check its shape and fix the bugs". Full findings, decisions and the no-downgrades table: `AUDIT_2026-11-22.md`.
+
+**Her brain is now the local Claude Code** on Marko's claude.ai plan ($0), chosen by the Fable master session on
+22.11.2026 because it is his standing rule (MANTRA_MANIFEST queen-local-claude-first.md), costs nothing and does not undo
+the v31 Groq removal. Marko can change it (Groq back, or a CAPI provider): the one place is `qwen_app/queen_brain.py`.
+`queen "<q>"` and `POST /api/chat` (NDJSON `{"t":...}` then `{"u":{model,cost,via}}`) go there. Not reachable: she
+answers "I cannot reach the local Claude Code. Do you want to use API credits?" and waits; never a paid provider.
+
+**One local router before any model** (`qwen_app/local_router.py`), on every entry point: the CAPI window
+(`/api/capi/send`), `/api/capi/ask`, `/api/capi/turn`, `/api/chat`, `/api/internal/local_command`. Order: pause (her own
+chats), the Python skills (`queen_python_skills`: list skills, current folder, ABLETON:, GEMINI IMAGE:, webcam, lan
+scan, check your shape), then the Groq-free chat commands of the old server (volume, files, Google Photos, ops hands,
+router, NDI, Second Take, Sony, phone say, settings panes, WhatsApp desktop/draft/AX/machine, AX read, apps, rename,
+repo reader, ask claude) only where Queen is on for the chat (a QUEEN: OFF CAPI chat bypasses her, v25).
+
+**Her skills are the brain's system prompt** (`queen_brain.system_prompt`): her working rules (how-queen-works.md), one
+catalogue line per skill and the full text of up to three skills whose name matches the question: about 9.6k
+characters instead of all 142k. `install.sh` copies queen_skills/ to `~/.queen/queen_skills` and `~/.groq/queen_skills`.
+
+**Routes restored** (`qwen_app/restored_routes.py`): every Groq-free module of the old server registers again, each in
+its own guard; `GET /api/queen/modules` (and `queen status`) lists loaded, failed and the Groq-bound modules that stay
+off (legacy chat/keys/billing/chats/self_update/github reader/remote send/test live, vision, posters, describe, web
+photo, live check, screen look, news, triple chat, brain escalate). The pin: `test_audit_fixes.py` section A fails when a
+route named in queen_skills/ is not registered (exemptions listed with their reason), on GitHub too
+(`.github/workflows/python-tests.yml`).
+
+**Update gate** (`queen_backend._ci`): AST, not cut below 30 % of the old file, and the install-gate tests run on a copy
+with the new file, before anything is written. `_bump_version` writes version.json and App.swift together or refuses;
+`_version_preflight` runs before any write. Commits say which model wrote them ("Written-by: Queen auto-update ...").
+
+**Gemini hands**: `run_shell` starts ONE allowlisted command without a shell (`gemini_hands.parse_command`): no pipes,
+`;`, `$`, redirects, globs, `cd`, `python3 -c`, `git push`; paths stay in the folder.
+
+**Window**: no ON/OFF (no-on-off-button.md); the X on the right quits Queen through the quit guard. The credit shows
+Google's last real answer ("Gemini: 402, credits depleted (date)") instead of an estimate; the tooltip explains the old
+estimate ($225.31 snapshot of 18.11.2026 minus the local ledger). The intro says what answers and what it costs. v33/v34:
+the tab asks the credit again until her backend has answered once (it used to keep "Anthropic ($ ?)" after a launch).
+
+**Self-check** (teach step): chat `check your shape`, `GET /api/queen/selfcheck`, `queen "check your shape"`; skill
+queen_skills/check-your-shape.md.
+
+**Waiting for a decision**: the X-Queen-Token stays optional (callers without it are listed in the audit); the
+Groq-bound modules stay off; `/api/github/*` and `/api/elevate/*` are inside the retired monolith and not ported (the
+repo reader covers reading). **Needs Marko**: Gemini answered 402 "prepayment credits depleted" on 22.11.2026 while the
+old header said $221.38 left.
+
 ## Gemini images (21.11.2026)
 
 `qwen_app/gemini_skill.py` makes free Gemini pictures in Marko's Chrome profiles over the CDP broker (:9333): references

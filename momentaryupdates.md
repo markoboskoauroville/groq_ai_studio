@@ -212,4 +212,4 @@ Status: done (v26, 18.11.2026: MASTER / SLAVE switch beside each provider radio,
 Status: done (v26, 18.11.2026: SLAVE_MODEL line chosen by the master every round from the slave's list with tiers and prices; step up tested gemini-3.5-flash-lite to gemini-3.8-flash; cap refuses a too costly step up).
 
 22.11.2026, Marko (word for word): "Queen has changed a lot since last year work on it. I was working with other AIs on it. Please check its shape and fix the bugs"
-Status: in progress (audit by an Opus worker of the Fable master session; findings in AUDIT_2026-11-22.md).
+Status: done for this round (22.11.2026): v32-v34 released and installed, findings and decisions in AUDIT_2026-11-22.md; waiting: the API token decision, Groq-bound modules stay off, Gemini 402 billing for Marko.
