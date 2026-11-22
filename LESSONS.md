@@ -20,6 +20,10 @@
   depleted. Show the provider's last real answer; explain the estimate in the tooltip.
 - **installers must wait for the quit guard.** `osascript quit; sleep 1; rm -rf` deleted a running app behind its
   "Are you sure?" dialog.
+- **A gate that tests a broken copy can spend money.** The gate test fed a deliberately broken skills file to the test
+  suite; the broken "list skills" fell through to the real Anthropic router (9 calls, $0.000513 on 22.11.2026, by this
+  audit's own tests). The gate's test runs now refuse every call that leaves the Mac, and the test asserts the router is
+  never called for a local skill.
 - **Rounds of this audit:** Phase 1 findings (17) -> master decisions A-E -> v32 (all fix-now + A-E, CI green) -> v33
   (launch race seen in the real window after install) -> v34 (the retry stopped at an error) -> self-check skill.
 
