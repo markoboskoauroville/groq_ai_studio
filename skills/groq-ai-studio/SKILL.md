@@ -170,3 +170,5 @@ Cheap status for apps: `GET /api/app/status`. Private code repos cannot build (b
 
 ## Triple chat (v9, 17.11.2026)
 One room for Marko, Queen and Claude: the word TRIPLE in the Queen window. Backend qwen_app/triple_chat.py (`/api/triple/list|get|new|settings|turn`, rooms in ~/.groq/triple/), window mac_app/app/Triple.swift. Claude local first (plan, $0), API only after Marko's YES; Queen's `ASK CLAUDE:` line is answered in the room, Claude's `ASK QUEEN:` runs on the ASK QUEEN button. Skill for Queen: queen_skills/triple-chat.md. Built untested; Marko tests by hand.
+
+- Run log: 22.11.2026: Queen v32 to v35: audit of v31 (routes restored, brain = local Claude Code via qwen_app/queen_brain.py, one local router before any model, real gate, no ON/OFF), v33/v34 launch-race fix, v35 skill tell-marko-on-screen (Macro Recorder's text blob from her chat, local, tested); round 2 record and installer message when her window moved. Lesson: a skill is not done until it is tested in her own chat; untracked ISSUES.md in the repo left alone (not ours).
