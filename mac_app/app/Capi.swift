@@ -225,6 +225,8 @@ final class Capi: ObservableObject {
 
     @MainActor
     private func applyCredit(_ j: [String: Any]) {
+        // v34: the Swift proxy answers {"ok":false,"error":...} (502) while the backend starts; that is not a credit
+        guard j["provider"] is String else { return }
         creditLoaded = true
         left = j["left"] as? Double
         provider = (j["provider"] as? String) ?? provider

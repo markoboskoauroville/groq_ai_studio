@@ -265,6 +265,9 @@ def tE():
     poll = swift[swift.index("private func startPolling()"):][:1200]
     check("v33: the CAPI tab asks the credit again until the backend has answered once (launch race)",
           "if !self.creditLoaded { await self.loadCredit() }" in poll and "creditLoaded = true" in swift)
+    ac = swift[swift.index("private func applyCredit("):][:400]
+    check("v34: an error answer (502 while the backend starts) does not count as the credit",
+          'guard j["provider"] is String else { return }' in ac and ac.index("guard j[") < ac.index("creditLoaded = true"))
     check("D: the old wording 'Claude Code on your API credit. Ask for anything' is gone",
           "Claude Code on your API credit. Ask for anything" not in swift)
 
