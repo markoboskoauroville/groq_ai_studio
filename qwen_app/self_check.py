@@ -22,7 +22,7 @@ EXEMPT_PREFIXES = ("/api/system/mv", "/api/system/set_volume", "/api/ndi", "/api
 GROQ_OR_UNPORTED = ("/api/brain/escalate", "/api/remote/send", "/api/screen/look", "/api/selfcheck/image-live",
                     "/api/skills/band-posters", "/api/skills/describe-images", "/api/skills/gemini-posters",
                     "/api/skills/live-check", "/api/skills/poster-like", "/api/skills/web-photo", "/api/triple/",
-                    "/api/vision/ask", "/api/github/contents", "/api/elevate/whatsapp")
+                    "/api/vision/ask")
 
 
 def _skill_routes(skills_dir: Path) -> dict[str, set]:
@@ -98,7 +98,23 @@ def report(app=None) -> dict:
     missing = sorted(r for r in named if not r.startswith(EXEMPT_PREFIXES + GROQ_OR_UNPORTED) and not _registered(app, r))
     off = sorted(r for r in named if r.startswith(GROQ_OR_UNPORTED))
     line(not missing, f"routes in her skills: {len(named)} named, {len(missing)} missing"
-         + (f": {', '.join(missing)}" if missing else "") + f"; {len(off)} off on purpose (need Groq or not ported)")
+         + (f": {', '.join(missing)}" if missing else "")
+         + (f"; off on purpose (need Groq): {', '.join(off)}" if off else ""))
+    # 6. chat files that could not be read: kept aside, never deleted (round 2, 22.11.2026)
+    try:
+        import capi_chat
+        bad = capi_chat.corrupt_chats()
+    except Exception as exc:  # noqa: BLE001
+        bad = [{"file": "?", "reason": f"could not list: {exc}"}]
+    line(not bad, "chat files: all readable" if not bad else
+         "chat files NOT readable (kept aside): " + "; ".join(f"{b['file']} ({b['reason']})" for b in bad))
+    # 7. the Google Cloud ledger behind the credit
+    try:
+        import gcloud_chat
+        _, ledger_err = gcloud_chat.spent_checked()
+    except Exception as exc:  # noqa: BLE001
+        ledger_err = f"could not check: {exc}"
+    line(not ledger_err, "Google Cloud ledger: readable" if not ledger_err else f"Google Cloud ledger unreadable: {ledger_err}")
     # 4. brain
     st = claude_link.status()
     line(st.get("reachable", False), "brain: local Claude Code " + ("reachable on the plan" if st.get("reachable")

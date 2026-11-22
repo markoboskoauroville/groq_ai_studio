@@ -56,11 +56,50 @@ def _path(rid):
     return ROOT / (re.sub(r"[^a-zA-Z0-9_-]", "", rid or "") + ".json")
 
 
-def _load(rid):
+CORRUPT_DIR_NAME = "unreadable"     # round 2 (22.11.2026): chat files that cannot be read are kept here, never deleted
+
+
+def _set_aside(p, reason):
+    """Move an unreadable chat file to ROOT/unreadable/ with a .why note; it is listed, never deleted."""
+    d = ROOT / CORRUPT_DIR_NAME
     try:
-        return json.loads(_path(rid).read_text())
-    except Exception:
+        d.mkdir(parents=True, exist_ok=True)
+        dest = d / f"{p.stem}.{time.strftime('%Y%m%d-%H%M%S')}.json"
+        os.replace(p, dest)
+        dest.with_suffix(".why").write_text(reason[:300])
+        print(f"[capi] chat file {p.name} could not be read ({reason}); kept as {dest}", flush=True)
+    except OSError as exc:
+        print(f"[capi] chat file {p.name} could not be read ({reason}) nor set aside: {exc}", flush=True)
+
+
+def corrupt_chats():
+    """The chat files that could not be read: [{file, reason}] (shown in the chat list and in `check your shape`)."""
+    d = ROOT / CORRUPT_DIR_NAME
+    out = []
+    for f in sorted(d.glob("*.json")) if d.is_dir() else []:
+        why = f.with_suffix(".why")
+        out.append({"file": str(f), "reason": why.read_text() if why.is_file() else "unreadable"})
+    return out
+
+
+def _load(rid):
+    p = _path(rid)
+    try:
+        text = p.read_text()
+    except FileNotFoundError:
         return None
+    except OSError as exc:
+        _set_aside(p, f"cannot read: {exc}")
+        return None
+    try:
+        room = json.loads(text)
+    except ValueError as exc:
+        _set_aside(p, f"not valid JSON: {exc}")
+        return None
+    if not isinstance(room, dict) or "id" not in room:
+        _set_aside(p, "not a chat (no id)")
+        return None
+    return room
 
 
 def _save(room):
@@ -891,9 +930,10 @@ def _credit_info():
     if cur == "gcloud":
         import gcloud_chat
         c = gcloud_chat.credit_info()
+        est = (f"${c['left']:.2f}" if c["left"] is not None else f"unknown ({c['ledger_error']})")
         note = (f"{gcloud_chat.status_line()}. Google gives no live balance, so the header shows Google's last real "
                 f"answer. The old estimate was ${c['start_usd']:.2f} (Billing snapshot {c['snapshot']}, project "
-                f"antigravity-cloud-offload) minus Queen's token-price ledger = ${c['left']:.2f}; it is not a balance. "
+                f"antigravity-cloud-offload) minus Queen's token-price ledger = {est}; it is not a balance. "
                 f"The free credit expires {gcloud_chat.expiry_text()}.")
     expires = ""
     if cur == "gcloud":
@@ -1051,13 +1091,13 @@ def register(app):
                 rooms.append({"id": r["id"], "title": r.get("title", ""), "count": len(r.get("messages", [])),
                               "updated": r.get("updated", 0), "created": r.get("created") or r.get("updated", 0),
                               "provider": r.get("provider", "anthropic"), "model": r.get("model", ""), **st})
-            except Exception:
-                pass
+            except Exception as exc:  # noqa: BLE001  round 2: never silent; _load already set a bad file aside
+                print(f"[capi] chat {f.name} left out of the list: {type(exc).__name__}: {exc}", flush=True)
         # v17 bug fix: the list was sorted by "updated", which every answer bumps, so a new chat fell below any chat that
         # was answering and the order changed on each poll. Now by creation time, newest first, id as the tie-break: a new
         # chat is always at the top and nothing moves afterwards.
         rooms.sort(key=lambda r: (-float(r["created"]), r["id"]))
-        return jsonify({"rooms": rooms, "conversations": rooms})
+        return jsonify({"rooms": rooms, "conversations": rooms, "unreadable": corrupt_chats()})
 
     @app.get("/api/capi/get")
     def capi_get():

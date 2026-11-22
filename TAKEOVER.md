@@ -39,6 +39,22 @@ Google's last real answer ("Gemini: 402, credits depleted (date)") instead of an
 estimate ($225.31 snapshot of 18.11.2026 minus the local ledger). The intro says what answers and what it costs. v33/v34:
 the tab asks the credit again until her backend has answered once (it used to keep "Anthropic ($ ?)" after a launch).
 
+**Round 2 (v35, 22.11.2026)**: an unreadable Google Cloud ledger shows "ledger unreadable" (never the full credit);
+a chat file that cannot be read is moved to `~/.queen/capi/unreadable/` with a `.why` note, listed in the window's chat
+list (red line) and in `check your shape`, never deleted. `/api/github/*` (github_reader.py) and `/api/elevate/*`
+(elevate_hub.py) are ported out of the retired app, guarded like the rest. Off-screen render for proofs without his
+screen: `open -n -g -j /Applications/Queen.app --args --studio-shot /tmp/q.png --width 820` writes the PNG and
+`/tmp/q.png.ax.json` (every AX element of that window) and exits; it starts no server, no backend, no updater.
+`mac_app/install.sh` records her window (mac_app/tools/window_state.py, read only) before the quit, reopens her in the
+background and compares: the frame comes back by the frame autosave "QueenMain"; macOS has no public way to choose a
+window's Space, so the installer says when her window came back on another Space.
+
+**Today (22.11.2026) her window is on another Space**: after the v32-v35 installs it opened on a Space Marko was not
+looking at (frame 1440x1267 kept). He finds it once in Mission Control; it stays there.
+
+**`ISSUES.md`** (repo root, untracked, 32 bytes, "## Session Issues - 19.11.2026" and nothing else): left by another AI
+session on 19.11.2026, empty; kept as it is, not ours to delete.
+
 **Self-check** (teach step): chat `check your shape`, `GET /api/queen/selfcheck`, `queen "check your shape"`; skill
 queen_skills/check-your-shape.md.
 

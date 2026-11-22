@@ -8,7 +8,7 @@ import SwiftUI
 import AppKit
 import ApplicationServices
 
-let VERSION = 34
+let VERSION = 35
 let APP_NAME = "Queen"
 
 enum Ink {
@@ -436,6 +436,7 @@ final class Delegate: NSObject, NSApplicationDelegate {
 
     func applicationDidFinishLaunching(_ n: Notification) {
         NSApp.appearance = NSAppearance(named: .darkAqua)
+        if Studio.active { Studio.run(); return }        // v35: off-screen render + AX tree, no server, no backend, no updater
         QueenHost.shared.start(appVersion: VERSION)     // Phase A: Queen's server is this app (8765), Python is its backend (8766)
         Queen.shared.start()
         DispatchQueue.main.async {

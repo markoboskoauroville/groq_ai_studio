@@ -18,11 +18,12 @@ MODULES = (
     "claude_link", "supervisor", "repo_reader", "ax_read", "whatsapp_ax", "whatsapp_desktop", "whatsapp_remote",
     "whatsapp_supervised", "system_volume", "system_settings", "system_files", "gphotos_album", "ndi_monitor",
     "affinity_bridge", "speak", "training_log", "image_collect_skill", "vm_gemini_skill",
+    "github_reader", "elevate_hub",      # round 2 (22.11.2026): ported out of the retired legacy_groq_app.py
 )
 RUNTIME_ONLY = ("data_sync",)
 # Modules of the old server that need a Groq model (pool / record_spend / the Groq chat). Off since v31.
 GROQ_BOUND = {
-    "legacy chat + keys + billing + chats + self_update + github reader + remote/send + test/live": "legacy_groq_app.py",
+    "legacy chat + keys + billing + chats + self_update + remote/send + test/live": "legacy_groq_app.py",
     "vision": "vision.py", "posters": "poster_skill.py", "describe": "describe_skill.py", "web photo": "web_photo_skill.py",
     "live check": "live_check.py", "screen look": "screen_look.py", "news": "news.py", "triple chat": "triple_chat.py",
     "brain escalate / model router": "brain.py, model_router.py",

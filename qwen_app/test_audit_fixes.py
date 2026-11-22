@@ -147,8 +147,6 @@ SKILL_ROUTE_EXEMPT = {
     "/api/triple/get": "Groq-bound (triple_chat)", "/api/triple/list": "Groq-bound (triple_chat)",
     "/api/triple/new": "Groq-bound (triple_chat)", "/api/triple/settings": "Groq-bound (triple_chat)",
     "/api/triple/turn": "Groq-bound (triple_chat)", "/api/vision/ask": "Groq-bound (vision)",
-    # inside the retired 3,844-line app, not yet ported (Groq-free but entangled); /api/repo/* reads repos meanwhile
-    "/api/github/contents": "retired monolith, not ported", "/api/elevate/whatsapp": "retired monolith, not ported",
 }
 
 
@@ -322,7 +320,51 @@ def tTeach():
     check("teach: her skill file check-your-shape.md exists", (ROOT / "queen_skills" / "check-your-shape.md").is_file())
 
 
-for name, fn in (("teach", tTeach), ("2", t2), ("3", t3), ("B", tB), ("A", tA), ("7", t7), ("11", t11), ("E", tE), ("D", tD), ("C", tC),
+def tR2():
+    import gcloud_chat
+    bad_ledger = home / "bad-ledger.jsonl"
+    bad_ledger.write_text('{"at": 9999999999, "cost": 1.0}\nthis is not json\n')
+    with patch.object(gcloud_chat, "LEDGER", bad_ledger), patch.object(gcloud_chat, "STATUS_FILE", home / "ps.json"):
+        info = gcloud_chat.credit_info()
+        check("round 2: an unreadable ledger never shows the full credit", info["left"] is None
+              and "ledger unreadable" in info["ledger_error"])
+        check("round 2: the header says 'ledger unreadable'", "ledger unreadable" in gcloud_chat.status_line())
+    good_ledger = home / "good-ledger.jsonl"
+    good_ledger.write_text('{"at": 9999999999, "cost": 1.5}\n')
+    with patch.object(gcloud_chat, "LEDGER", good_ledger):
+        check("round 2: a readable ledger still counts", gcloud_chat.spent_checked() == (1.5, ""))
+    capi_chat.ROOT.mkdir(parents=True, exist_ok=True)
+    broken = capi_chat.ROOT / "deadbeef00.json"
+    broken.write_text('{"id": "deadbeef00", "messages": [')
+    d = client.get("/api/capi/list").get_json()
+    kept = list((capi_chat.ROOT / "unreadable").glob("deadbeef00.*.json"))
+    check("round 2: a corrupt chat file is listed with its reason, not silently dropped",
+          any("deadbeef00" in u["file"] and "not valid JSON" in u["reason"] for u in d.get("unreadable", [])))
+    check("round 2: the corrupt chat file is kept aside, never deleted", len(kept) == 1 and not broken.exists()
+          and kept[0].read_text().startswith('{"id": "deadbeef00"'))
+    import self_check
+    with patch.object(claude_link, "status", return_value={"reachable": True}):
+        rep = self_check.report(queen_backend.app)
+    check("round 2: check your shape lists the unreadable chat file", any("deadbeef00" in l and "PROBLEM" in l for l in rep["lines"]))
+    check("round 2: check your shape names the routes that are off on purpose",
+          any("off on purpose (need Groq):" in l and "/api/vision/ask" in l for l in rep["lines"]))
+    for route in ("/api/github/repos", "/api/elevate/board"):
+        check(f"round 2: {route} is ported and registered", any(r.rule == route for r in queen_backend.app.url_map.iter_rules()))
+    app_swift = (ROOT / "mac_app" / "app" / "App.swift").read_text()
+    studio = (ROOT / "mac_app" / "app" / "Studio.swift").read_text()
+    launch = app_swift[app_swift.index("func applicationDidFinishLaunching"):][:600]
+    check("round 2: studio mode starts before any server, backend or updater",
+          launch.index("Studio.active") < launch.index("QueenHost.shared.start"))
+    check("round 2: studio mode renders off screen and leaves with exit(), never the quit path that stops her backend",
+          "x: -30000" in studio and "exit(0)" in studio and "NSApp.terminate" not in studio and ".ax.json" in studio)
+    inst = (ROOT / "mac_app" / "install.sh").read_text()
+    check("round 2: the installer compares her window before and after and reopens her in the background",
+          "window_state.py" in inst and 'open -g "/Applications/$NAME.app"' in inst)
+    swift = (ROOT / "mac_app" / "app" / "Capi.swift").read_text()
+    check("round 2: the window lists unreadable chat files", '"unreadable"' in swift and "capi-unreadable" in swift)
+
+
+for name, fn in (("round2", tR2), ("teach", tTeach), ("2", t2), ("3", t3), ("B", tB), ("A", tA), ("7", t7), ("11", t11), ("E", tE), ("D", tD), ("C", tC),
                  ("12/8", t12)):
     section(f"section {name}", fn)
 

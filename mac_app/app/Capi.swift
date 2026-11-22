@@ -81,6 +81,7 @@ final class Capi: ObservableObject {
     @Published var creditNote = ""
     @Published var statusLine = ""                // v32: the provider's last real answer (gcloud), shown instead of an estimate
     @Published var intro = ""                     // v32: what answers in this tab and what it costs (from the backend)
+    @Published var unreadable: [String] = []     // v35: chat files the backend could not read (kept in capi/unreadable)
     var creditLoaded = false                      // v33: the backend answered /api/capi/credit at least once
     private var poller: Task<Void, Never>?
     private var shownSig = ""                    // what is on screen: count + last text, so a poll redraws only on change
@@ -283,6 +284,12 @@ final class Capi: ObservableObject {
                             running: (r["running"] as? Bool) ?? false, busy: (r["busy"] as? Bool) ?? false,
                             error: (r["error"] as? String) ?? "")
         }
+        // round 2 (v35): chat files that could not be read are kept aside by the backend and listed, never silent
+        let bad = ((j["unreadable"] as? [[String: Any]]) ?? []).map { u -> String in
+            let f = ((u["file"] as? String) ?? "?") as NSString
+            return "\(f.lastPathComponent): \((u["reason"] as? String) ?? "unreadable")"
+        }
+        if bad != unreadable { unreadable = bad }
         let nowBusy = Set(l.filter { $0.busy }.map { $0.id })
         if !busyIds.subtracting(nowBusy).isEmpty { await loadCredit() }     // an answer finished somewhere: the credit moved
         busyIds = nowBusy
@@ -972,6 +979,15 @@ struct CapiRoomList: View {
     var body: some View {
         ScrollView {
             LazyVStack(alignment: .leading, spacing: 0) {
+                if !c.unreadable.isEmpty {
+                    // v35: never a chat that vanishes silently; the file is kept in ~/.queen/capi/unreadable
+                    Text("\(c.unreadable.count) chat file(s) could not be read, kept in ~/.queen/capi/unreadable: "
+                         + c.unreadable.joined(separator: "; "))
+                        .font(.system(size: 11, design: .monospaced)).foregroundStyle(Ink.red)
+                        .fixedSize(horizontal: false, vertical: true)
+                        .padding(.horizontal, 12).padding(.vertical, 8)
+                        .accessibilityIdentifier("capi-unreadable")
+                }
                 ForEach(c.convs) { r in
                     HStack(alignment: .top, spacing: 0) {
                         Rectangle().fill(r.running ? Ink.green : Color.clear).frame(width: 4)

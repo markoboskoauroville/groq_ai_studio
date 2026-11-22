@@ -26,6 +26,14 @@
   never called for a local skill.
 - **Rounds of this audit:** Phase 1 findings (17) -> master decisions A-E -> v32 (all fix-now + A-E, CI green) -> v33
   (launch race seen in the real window after install) -> v34 (the retry stopped at an error) -> self-check skill.
+  **Round 1: 8 of 10** (no on 2: two swallowed errors left as "tidy"; no on 3/4: the window at minimum width and the
+  v34 AX tree unproven). **Round 2 (v35)** changed: the ledger and the chat store show their errors (kept aside, never
+  deleted); an off-screen `--studio-shot` with the AX tree for proofs without his screen; the installer checks her
+  window place; GitHub reader and Elevate routes ported; `check your shape` names the off routes; wa_type.py --exact fix.
+- **"Tidy" is not a severity for a silent failure.** A swallowed error that shows a wrong number (full credit) or makes
+  data vanish (a chat) is a wrong result: fix it in the same round.
+- **A relaunch with `open -g` can land on another Space.** Proofs of a window must not depend on where it is: render it
+  off screen inside the app (`--studio-shot`), and keep the frame by autosave.
 
 ## 21.11.2026: Gemini image attach + profile rotation
 

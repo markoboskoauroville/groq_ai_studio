@@ -114,29 +114,48 @@ def expiry_text():
     return f"{int(d)}.{int(m)}.{y}"
 
 
-def spent():
+def spent_checked():
+    """-> (spent USD since the starting balance, '' or why the ledger could not be read). Round 2 (22.11.2026): an
+    unreadable ledger used to count as $0 spent, so the full credit showed as if nothing were spent."""
     t0 = float(config().get("at") or 0)
-    s = 0.0
+    s, bad = 0.0, 0
     try:
-        for line in open(LEDGER):
-            try:
-                r = json.loads(line)
-                if r.get("at", 0) >= t0:
-                    s += float(r.get("cost") or 0)
-            except Exception:
-                pass
-    except Exception:
-        pass
-    return s
+        with open(LEDGER) as f:
+            for line in f:
+                if not line.strip():
+                    continue
+                try:
+                    r = json.loads(line)
+                    if r.get("at", 0) >= t0:
+                        s += float(r.get("cost") or 0)
+                except (ValueError, TypeError, AttributeError):
+                    bad += 1
+    except FileNotFoundError:
+        return 0.0, ""                       # no Google Cloud turn yet: honestly $0
+    except OSError as exc:
+        return s, f"ledger unreadable: {exc}"
+    if bad:
+        return s, f"ledger unreadable: {bad} line(s) of {LEDGER} could not be read"
+    return s, ""
+
+
+def spent():
+    return spent_checked()[0]
 
 
 def left():
-    return round(max(0.0, float(config()["start_usd"]) - spent()), 4)
+    """None when the ledger is unreadable: never the full credit as if nothing were spent."""
+    value, err = spent_checked()
+    if err:
+        return None
+    return round(max(0.0, float(config()["start_usd"]) - value), 4)
 
 
 def credit_info():
     c = config()
+    _, err = spent_checked()
     return {
+        "ledger_error": err,
         "left": left(),
         "start_usd": float(c["start_usd"]),
         "snapshot": c["read"],
@@ -280,6 +299,9 @@ def last_answer():
 
 
 def status_line():
+    _, err = spent_checked()
+    if err:
+        return "Gemini: " + err
     a = last_answer()
     if not a:
         return "Gemini: no answer recorded yet"
