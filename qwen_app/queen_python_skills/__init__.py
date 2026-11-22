@@ -118,6 +118,16 @@ SKILLS = (
         handler=_gemini_help,
     ),
     Skill(
+        skill_id="tell-marko-on-screen",
+        description=(
+            "A short notice on Marko's screen (Macro Recorder's text blob, never takes focus, no sound): `tell Marko on screen that <text>`. "
+            "Notices only; a question that needs his answer goes in the chat."
+        ),
+        commands=frozenset({"tell marko help", "blob help"}),
+        handler=lambda _c=None: SkillResult("tell-marko-on-screen", "Say: tell Marko on screen that <short English text>. I run `macro blob` "
+                                            "(kind done for finished/ready, ask for I need you, else info). It is a notice, not a question."),
+    ),
+    Skill(
         skill_id="self-check",
         description="Queen checks her own shape: versions, modules, the routes her skills name, her brain, her skill files. $0.",
         commands=frozenset({"check your shape", "check yourself", "self check", "self-check", "check your own shape",
@@ -154,6 +164,11 @@ def dispatch(text: str, context: dict | None = None) -> SkillResult | None:
         answer = chat_webcam_command(text)
         if answer:
             return SkillResult("webcam-recorder", answer)
+    # 22.11.2026: "tell Marko on screen that ..." -> Macro Recorder's text blob (skill tell-marko-on-screen)
+    from .tell_marko import chat_tell_command
+    answer = chat_tell_command(text)
+    if answer:
+        return SkillResult("tell-marko-on-screen", answer)
     # 21.11.2026: "which devices are on my network" -> LAN Scanner (Mantra) through lanscan (skill lan-scan)
     from .lan_scan import chat_lan_command
     answer = chat_lan_command(text)

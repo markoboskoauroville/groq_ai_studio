@@ -303,3 +303,11 @@ Marko's request is in momentaryupdates.md. Plan (tick each, commit+push after ea
 | Window at 560 pt: aligned, nothing cut | PASS |
 | Queen taught: skill capi.md, asked in her chat, answered right (POST /api/capi/ask) | PASS |
 **Not tested:** Stop button mid-run; room switching/ROOMS list in the window; folder picker click; models other than Haiku; Croatian audio (route logic only); speaker in normal chat and TRIPLE (same Bubble, not clicked there); Queen actually starting a run through /api/capi/ask herself; Speechify cost (per character, cached = $0; spend ask not run). Mouse/keyboard via Macro Recorder did not register in this run (CAPI click, typing): I used macro ax-press and System Events keystrokes. Note: default folder claude-code makes Claude Code obey its CLAUDE.md and speak aloud via langsay during tests.
+
+## 22.11.2026: skill tell-marko-on-screen (Macro Recorder's text blob)
+Marko, 22.11.2026 (text blob request, MANTRA_MACRO momentaryupdates.md). `queen_skills/tell-marko-on-screen.md` + the local Python skill
+`qwen_app/queen_python_skills/tell_marko.py` (runs `~/.local/bin/macro blob`, kind chosen from the words: done/ask/info; no model, $0), registered
+in `queen_python_skills/__init__.py` (catalogue id tell-marko-on-screen, chat phrases "tell Marko on screen that ...", "blob: ..."). Tests in
+test_capi_features.py (5 checks) and the catalogue pin in test_queen_backend.py; install.sh gate green, installed in ~/.queen (backend restarted once, pid
+21603 -> 92999, respawned by the app). Tested: `queen "tell Marko on screen that the Queen skill test is done"` answered "Told Marko on screen (done)" and
+~/.mantra_macro/blob_log.jsonl has the line. No version bump: Python-only, her Swift app is unchanged. Needs Macro Recorder v32 or newer.

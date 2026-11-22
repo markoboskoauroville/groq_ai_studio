@@ -96,6 +96,17 @@ with patch.object(Ableton, "execute_text", return_value="Mock Ableton state"):
 check("Ableton command dispatches to the provider-independent Python skill",
       ableton_skill is not None and ableton_skill.skill_id == "ableton-control"
       and ableton_skill.answer == "Mock Ableton state")
+from queen_python_skills import tell_marko as TellMarko
+check("tell-marko parses a done notice", TellMarko.parse("tell Marko on screen that the test is done") == ("The test is done.", "done"))
+check("tell-marko parses an info notice", TellMarko.parse("Tell Marko: lunch is at two") == ("Lunch is at two.", "info"))
+check("tell-marko parses an ask notice", TellMarko.parse("blob: I need you in Chrome") == ("I need you in Chrome.", "ask"))
+check("tell-marko ignores other sentences", TellMarko.parse("what folder is open") is None and TellMarko.parse("tell Marko") is None)
+with patch.object(TellMarko.subprocess, "run") as _run:
+    _run.return_value = type("R", (), {"returncode": 0, "stdout": "blob: {}", "stderr": ""})()
+    _tm = PythonSkills.dispatch("tell Marko on screen that the test is done")
+    check("tell-marko dispatches to macro blob with the kind",
+          _tm is not None and _tm.skill_id == "tell-marko-on-screen"
+          and _run.call_args[0][0][1:] == ["blob", "The test is done.", "--kind", "done"])
 judge_prompt = Router._judge_prompt("Summarize this.", catalog, [
     {"name": "voice.wav", "mime": "audio/wav", "b64": "secret-payload"},
 ])
