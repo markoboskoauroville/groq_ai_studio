@@ -61,6 +61,11 @@ def _gemini_help(_context: dict | None = None) -> SkillResult:
     return SkillResult("gemini-image", gemini_image.help_text())
 
 
+def _self_check(_context: dict | None = None) -> SkillResult:
+    import self_check
+    return SkillResult("self-check", self_check.report()["text"])
+
+
 SKILLS = (
     Skill(
         skill_id="list-skills",
@@ -111,6 +116,13 @@ SKILLS = (
         ),
         commands=frozenset({"gemini image help", "gemini image", "how do you make gemini images"}),
         handler=_gemini_help,
+    ),
+    Skill(
+        skill_id="self-check",
+        description="Queen checks her own shape: versions, modules, the routes her skills name, her brain, her skill files. $0.",
+        commands=frozenset({"check your shape", "check yourself", "self check", "self-check", "check your own shape",
+                            "health check", "how is your shape"}),
+        handler=_self_check,
     ),
 )
 

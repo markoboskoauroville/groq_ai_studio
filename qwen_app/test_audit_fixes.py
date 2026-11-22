@@ -306,7 +306,18 @@ def t12():
     check("audit 8: install.sh is valid sh", r.returncode == 0)
 
 
-for name, fn in (("2", t2), ("3", t3), ("B", tB), ("A", tA), ("7", t7), ("11", t11), ("E", tE), ("D", tD), ("C", tC),
+def tTeach():
+    with patch.object(claude_link, "status", return_value={"reachable": True}):
+        d = client.get("/api/queen/selfcheck").get_json()
+        r = client.post("/api/internal/local_command", json={"text": "check your shape"}).get_json()
+    check(f"teach: /api/queen/selfcheck reports her shape (missing routes: {d.get('missing_routes')})",
+          "lines" in d and d.get("missing_routes") == [])
+    check("teach: 'check your shape' is answered locally by the self-check skill",
+          r.get("skill") == "self-check" and "My shape:" in (r.get("answer") or ""))
+    check("teach: her skill file check-your-shape.md exists", (ROOT / "queen_skills" / "check-your-shape.md").is_file())
+
+
+for name, fn in (("teach", tTeach), ("2", t2), ("3", t3), ("B", tB), ("A", tA), ("7", t7), ("11", t11), ("E", tE), ("D", tD), ("C", tC),
                  ("12/8", t12)):
     section(f"section {name}", fn)
 

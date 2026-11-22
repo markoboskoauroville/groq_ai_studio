@@ -57,7 +57,7 @@ from queen_python_skills import lan_scan as _lan
 check("lan-scan matches its phrases and not the others", _lan.matches("which devices are on my network right now?") and _lan.matches("who is on my wifi")
       and not _lan.matches("vpn status") and not _lan.matches("what is the weather") and not _lan.matches("keeper status"))
 check("Python skill catalog includes the provider-independent Ableton skill",
-      {item["id"] for item in skill_list} == {"list-skills", "current-folder", "ableton-control", "webcam-recorder", "gemini-image"})
+      {item["id"] for item in skill_list} == {"list-skills", "current-folder", "ableton-control", "webcam-recorder", "gemini-image", "self-check"})
 ableton_capabilities = client.get("/api/ableton/capabilities").get_json()
 check("Ableton capabilities expose actions for any model provider",
       ableton_capabilities["ok"] and ableton_capabilities["provider_independent"]

@@ -78,6 +78,11 @@ def register(app) -> None:
                        failed_hands=local_router.FAILED_HANDS, groq_bound_off=GROQ_BOUND,
                        groq_bound_hands_off=list(local_router.GROQ_BOUND_HANDS))
 
+    @app.get("/api/queen/selfcheck")
+    def queen_selfcheck():
+        import self_check
+        return jsonify(**self_check.report(app))
+
     @app.post("/api/chat")
     def queen_chat():
         """`queen "<q>"`: NDJSON lines {"t": text} ... {"u": {...}} (the old wire format, so the CLI works unchanged)."""
