@@ -50,7 +50,7 @@ Managed by **Swift Matrix (Mantra)** (`/Applications/Swift Matrix (Mantra).app`)
 | **Percussions / Mantras** | `yshai` (Yshai Afterman Percussion School), `indianmantras` (Indian Mantras), `shrutibox` |
 | **Keyboard and mouse** | `macro` (Macro Recorder — AX engine), `mouse` (Automated Mouse Actions), `keymon` (Keyboard Monitor), `streamdeck` (Stream Deck Remote), `controllermapper` |
 | **Mac** | `swiftmatrix` (Swift Matrix — startup & login manager), `starapi` (Star API `:8863`), `monitor` (Star Monitor), `launcher` (Launcher), `findfile` (Find a File), `download` (Download, Copy and Move `:8833`), `netaggregate` (Network Aggregate Connection Keeper), `keyringtester` (KeyringTester), `timer` (Timer Stopwatch Clock), `darken` (Screen Brightness), `codefiller` (SMS Code Filler), `uhdhddisplay` (UHD HD Display), `chromiumvm` (VM Machine Remote Viewer), `vmrouter` (VM Router), `webcamviewer` (Webcam Recorder) |
-| **E16** (exclusive group) | `e16resolve` (E16 for DaVinci Resolve), `liveactions` (E16 Ableton Live Actions), `oxi` (E16 Ableton Remote) |
+| **E16** (exclusive group) | `e16resolve` (E16 for DaVinci Resolve), `liveactions` (E16 Ableton Live Assistant), `oxi` (E16 Ableton Remote) |
 | **Camera** | `mantravirtualcam` (Virtual Cam), `obs` (OBS Studio), `ndimonitor` (NDI Mantra Monitor) |
 
 ---
