@@ -60,7 +60,9 @@ else:
     if b.get("onscreen") and not a.get("onscreen"):
         print("window: it was on the visible Space before and is on another Space now; macOS gives no public way to put "
               "it back: find it once in Mission Control")
+    elif not b.get("onscreen") and a.get("onscreen"):
+        print("window: it was on another Space before and opened on the visible Space now (in the background, not activated)")
     else:
-        print("window: Space as before (" + ("visible" if a.get("onscreen") else "not on the visible Space, as before") + ")")
+        print("window: Space as before (" + ("visible" if a.get("onscreen") else "another Space") + ")")
 PYEOF
 fi

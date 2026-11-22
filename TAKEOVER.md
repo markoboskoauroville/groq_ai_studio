@@ -49,8 +49,9 @@ screen: `open -n -g -j /Applications/Queen.app --args --studio-shot /tmp/q.png -
 background and compares: the frame comes back by the frame autosave "QueenMain"; macOS has no public way to choose a
 window's Space, so the installer says when her window came back on another Space.
 
-**Today (22.11.2026) her window is on another Space**: after the v32-v35 installs it opened on a Space Marko was not
-looking at (frame 1440x1267 kept). He finds it once in Mission Control; it stays there.
+**Her window, 22.11.2026**: after the v32-v34 installs it opened on a Space Marko was not looking at; after the v35
+install (new installer) it opened again on the visible Space in the background, same frame (-1,25 1440x1267), not
+activated (the front app stayed Live). Nothing for him to find.
 
 **`ISSUES.md`** (repo root, untracked, 32 bytes, "## Session Issues - 19.11.2026" and nothing else): left by another AI
 session on 19.11.2026, empty; kept as it is, not ours to delete.
