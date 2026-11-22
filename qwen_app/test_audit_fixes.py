@@ -262,6 +262,9 @@ def tE():
         check("E: the window intro says what answers and what it costs", "Gemini on Google Cloud answers here" in d["intro"])
     swift = (ROOT / "mac_app" / "app" / "Capi.swift").read_text()
     check("E: the window shows status_line when the backend gives one", "statusLine" in swift and "status_line" in swift)
+    poll = swift[swift.index("private func startPolling()"):][:1200]
+    check("v33: the CAPI tab asks the credit again until the backend has answered once (launch race)",
+          "if !self.creditLoaded { await self.loadCredit() }" in poll and "creditLoaded = true" in swift)
     check("D: the old wording 'Claude Code on your API credit. Ask for anything' is gone",
           "Claude Code on your API credit. Ask for anything" not in swift)
 

@@ -1,6 +1,6 @@
 {
-  "version": 32,
-  "updated_at": "2026-11-22T07:00:00+0100",
+  "version": 33,
+  "updated_at": "2026-11-22T07:40:00+0100",
   "log": [
     {
       "version": 1,
@@ -314,6 +314,15 @@
         "mac_app/install.sh",
         "qwen",
         "install.sh"
+      ]
+    },
+    {
+      "version": 33,
+      "timestamp": "2026-11-22T07:40:00+0100",
+      "message": "CAPI tab asks the credit, provider and folders again until the backend answers (launch race); list-skills names where unmatched tasks go",
+      "files": [
+        "mac_app/app/Capi.swift",
+        "qwen_app/queen_python_skills/__init__.py"
       ]
     }
   ]

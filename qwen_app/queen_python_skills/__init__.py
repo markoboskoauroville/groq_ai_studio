@@ -24,7 +24,8 @@ def _list_skills(_context: dict | None = None) -> SkillResult:
     for skill in SKILLS:
         if skill.skill_id != "list-skills":
             lines.append(f"- {skill.skill_id}: {skill.description}")
-    lines.append("Unmatched tasks continue to the selected CAPI provider.")
+    lines.append("Unmatched tasks: in the CAPI tab the selected provider answers (paid from its credit); through `queen` "
+                 "and /api/chat the local Claude Code on the plan answers ($0).")
     return SkillResult("list-skills", "\n".join(lines))
 
 

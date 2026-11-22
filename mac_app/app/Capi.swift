@@ -81,6 +81,7 @@ final class Capi: ObservableObject {
     @Published var creditNote = ""
     @Published var statusLine = ""                // v32: the provider's last real answer (gcloud), shown instead of an estimate
     @Published var intro = ""                     // v32: what answers in this tab and what it costs (from the backend)
+    var creditLoaded = false                      // v33: the backend answered /api/capi/credit at least once
     private var poller: Task<Void, Never>?
     private var shownSig = ""                    // what is on screen: count + last text, so a poll redraws only on change
     private var busyIds: Set<String> = []
@@ -131,6 +132,15 @@ final class Capi: ObservableObject {
         if poller != nil { return }
         poller = Task { @MainActor in
             while self.active && !Task.isCancelled {
+                // v33 (22.11.2026): at launch the tab opens before her Python backend answers; the credit, provider and
+                // folders then failed once and were never asked again (the header showed "Anthropic ($ ?)" for Google Cloud)
+                if !self.creditLoaded { await self.loadCredit() }
+                if self.folders.isEmpty, let j = await Queen.shared.json("/api/capi/folders"), let l = j["folders"] as? [[String: Any]] {
+                    self.folders = l.compactMap { f in
+                        guard let n = f["name"] as? String, let p = f["path"] as? String else { return nil }
+                        return FolderItem(name: n, path: p)
+                    }
+                }
                 await self.loadConvs()
                 if !self.convId.isEmpty { await self.reload() }
                 try? await Task.sleep(nanoseconds: 1_200_000_000)
@@ -215,6 +225,7 @@ final class Capi: ObservableObject {
 
     @MainActor
     private func applyCredit(_ j: [String: Any]) {
+        creditLoaded = true
         left = j["left"] as? Double
         provider = (j["provider"] as? String) ?? provider
         providerName = (j["name"] as? String) ?? providerName
