@@ -210,3 +210,6 @@ Status: done (v26, 18.11.2026: MASTER / SLAVE switch beside each provider radio,
 
 18.11.2026, Marko (word for word): "In that case, Anthropic, if Anthropic is master, he decides which of Google's models to use depending on the task. If the task is not executed well, he can choose to get a higher model or to experiment with lower models. Vice versa also applies."
 Status: done (v26, 18.11.2026: SLAVE_MODEL line chosen by the master every round from the slave's list with tiers and prices; step up tested gemini-3.5-flash-lite to gemini-3.8-flash; cap refuses a too costly step up).
+
+22.11.2026, Marko (word for word): "Queen has changed a lot since last year work on it. I was working with other AIs on it. Please check its shape and fix the bugs"
+Status: in progress (audit by an Opus worker of the Fable master session; findings in AUDIT_2026-11-22.md).
