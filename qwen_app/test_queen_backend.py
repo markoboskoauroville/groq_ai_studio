@@ -80,6 +80,8 @@ with tempfile.TemporaryDirectory(dir=test_home) as temp_dir:
     folder = Path.home() / "Developer" / "claude-code"
     if not folder.is_dir():
         folder = Path.home() / "Developer" / "groq_ai_studio"
+    if not folder.is_dir():          # GitHub's runner (22.11.2026): the checkout itself, inside its home
+        folder = Path(__file__).resolve().parent.parent
     created = client.post("/api/capi/new", json={"cwd": str(folder)}).get_json()
     conversation_id = created["room"]["id"]
     sent = client.post("/api/capi/send", json={
