@@ -17,6 +17,24 @@ Queen reaches the local Claude Code (headless `claude -p`, claude.ai plan) throu
 `/api/auto_update/run`) goes local first; unreachable -> "I cannot reach the local Claude Code. Do you want to use API
 credits?" (409 need_consent), API only with `allow_api: true` after his yes. Start Queen without the CLAUDE* env of a session.
 MANTRA_MANIFEST modules/queen-local-claude-first.md.
+## HER SHAPE SINCE 22.11.2026 (v32-v34, audit): read this before the older sections below
+The sections after this one describe the v1-v30 Python server. Since Copilot's v31 (19.11.2026) the Swift app serves
+8765 and proxies to the Python backend `~/.queen/backend/queen_backend.py` on 8766 (install: `./install.sh` in the repo,
+state in `~/.queen`). There is NO Groq chat, key pool, Groq spend ledger, Code Box, `/api/remote/send` backdoor,
+`/api/self_update/*` chunks or `/api/github/*` reader any more (off, listed by `GET /api/queen/modules`).
+- Brain: `queen "<q>"` / `POST /api/chat` = the local Claude Code on the plan ($0) with queen_skills/ as system prompt
+  (`qwen_app/queen_brain.py`); unreachable -> the consent sentence, never a paid provider.
+- One local router before any model on every entry point (`qwen_app/local_router.py`).
+- Restored Groq-free routes: `/api/claude/*`, `/api/supervisor/*` (queen pending), `/api/pause*`, `/api/repo/*`,
+  `/api/ax/*`, `/api/whatsapp/*`, `/api/system/*`, `/api/gphotos/*`, NDI, Affinity, speak, training, image collect,
+  `/api/internal/local_command` (`qwen_app/restored_routes.py`).
+- Checks: `queen status` (brain + modules), `queen "check your shape"` / `GET /api/queen/selfcheck`.
+- Test a chat command for $0: `curl -s -X POST 127.0.0.1:8765/api/internal/local_command -H 'content-type: application/json' -d '{"text":"list skills"}'`.
+- CI: `.github/workflows/python-tests.yml` (incl. the pin: every route named in queen_skills/ registered) and mac-app.yml.
+- Update gate: AST + size + install-gate tests on a copy; version.json and App.swift bumped together.
+- A new skill that names a route: the route must exist, or the python-tests run fails.
+- Findings and decisions: repo `AUDIT_2026-11-22.md`.
+
 # Groq AI Studio
 
 **Note:** "Queen" = `qwen` command. When Marko says "Queen", he means this qwen application.
@@ -94,6 +112,8 @@ All previously open items completed in v3:
 - Star Menu (`/api/star/*`), Voice Engine (`/api/voice/*`), and Elevate Media (`/api/elevate/*`) backend routes + web UI modals (`⭐`, `🔊`, `🎬`) built and verified.
 
 ## Run log
+- 22.11.2026: audit of v31 (Opus worker, Fable master): v32 routes restored, local Claude brain, one router, real gate,
+  Gemini hands without shell, no ON/OFF, Google's last real answer in the header; v33/v34 launch-race fix; self-check skill.
 - 11.11.2026: repo created from the running v09; skill written. Backdoor chat tested (3 turns, works); token count per turn looks inflated, check it.
 - 11.11.2026: v1 upgrade — CI pipeline, self-update panel, auto-update GitHub repo, version tracking, server-side chat persistence, chat rename.
 - 11.11.2026: Added `GEMINI.md` workspace rule — mandatory handover + skill update after every code change. Both repos now public.
