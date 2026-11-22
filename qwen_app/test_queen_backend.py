@@ -84,11 +84,18 @@ with tempfile.TemporaryDirectory(dir=test_home) as temp_dir:
         folder = Path(__file__).resolve().parent.parent
     created = client.post("/api/capi/new", json={"cwd": str(folder)}).get_json()
     conversation_id = created["room"]["id"]
-    sent = client.post("/api/capi/send", json={
-        "id": conversation_id,
-        "text": "list skills",
-        "router": True,
-    }).get_json()
+    import capi_model_router as _router
+    # 22.11.2026: if the local skill ever stops matching, this must FAIL here, not ask a paid router or provider
+    with patch.object(_router, "choose", side_effect=AssertionError("router called for a local skill")), \
+            patch.object(capi_chat.Conv, "send", side_effect=AssertionError("provider called for a local skill")):
+        try:
+            sent = client.post("/api/capi/send", json={
+                "id": conversation_id,
+                "text": "list skills",
+                "router": True,
+            }).get_json() or {}
+        except AssertionError as exc:
+            sent = {"error": str(exc)}
     conversation = client.get(f"/api/capi/get?id={conversation_id}").get_json()["room"]
     check("known command is handled by Python in the runtime", sent["local_skill"] == "list-skills")
     check(

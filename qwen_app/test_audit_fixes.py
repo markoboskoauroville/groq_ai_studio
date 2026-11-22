@@ -203,6 +203,8 @@ def t7():
         broken = (HERE / "queen_python_skills" / "__init__.py").read_text().replace('"list skills",', '"list skillz",')
         ok, errs = queen_backend._ci(broken, "queen_python_skills/__init__.py")
         check("audit 7: CI runs the tests on a copy and refuses an edit that breaks them", not ok)
+        check("audit 7: the gate's test runs are offline (no call leaves this Mac)",
+              "_OFFLINE_RUNNER" in (HERE / "queen_backend.py").read_text() and "offline:" in queen_backend._OFFLINE_RUNNER)
     repo = home / "repo"
     (repo / "mac_app" / "app").mkdir(parents=True)
     (repo / "version.json").write_text(json.dumps({"version": 31, "log": []}))

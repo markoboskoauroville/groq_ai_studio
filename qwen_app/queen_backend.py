@@ -194,6 +194,21 @@ def _bump_version(files: list[str], message: str) -> int:
     return version
 
 
+# The gate runs tests on a copy that may be broken: a broken skill must FAIL a test, never fall through to a paid
+# provider (22.11.2026: a deliberately broken copy sent "list skills" to Anthropic's router, $0.000057 a run). Every
+# call that leaves this Mac is refused inside the gate's test runs.
+_OFFLINE_RUNNER = (
+    "import runpy, sys, urllib.request\n"
+    "_o = urllib.request.urlopen\n"
+    "def _g(req, *a, **k):\n"
+    "    u = getattr(req, 'full_url', None) or str(req)\n"
+    "    if not (u.startswith('http://127.0.0.1') or u.startswith('http://localhost')):\n"
+    "        raise OSError('offline: the update gate allows no call off this Mac: ' + u.split('?')[0][:80])\n"
+    "    return _o(req, *a, **k)\n"
+    "urllib.request.urlopen = _g\n"
+    "sys.argv = sys.argv[1:]\n"
+    "runpy.run_path(sys.argv[0], run_name='__main__')\n"
+)
 GATE_TESTS = ("test_queen_backend.py", "test_capi_features.py", "test_pair_chat.py", "test_ableton_skill.py",
               "test_audit_fixes.py")
 
@@ -232,8 +247,8 @@ def _ci(code: str, filename: str, old_code: str | None = None, run_tests: bool =
             if not (copy / test).is_file():
                 continue
             try:
-                r = subprocess.run([sys.executable, str(copy / test)], cwd=copy, capture_output=True, text=True,
-                                   timeout=600, env={**os.environ, "QUEEN_GATE": "1"})
+                r = subprocess.run([sys.executable, "-c", _OFFLINE_RUNNER, str(copy / test)], cwd=copy,
+                                   capture_output=True, text=True, timeout=600, env={**os.environ, "QUEEN_GATE": "1"})
             except subprocess.TimeoutExpired:
                 return False, [f"{test}: timed out with the new {filename}"]
             if r.returncode != 0:
