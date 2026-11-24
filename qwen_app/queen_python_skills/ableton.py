@@ -81,7 +81,7 @@ def capabilities() -> dict[str, Any]:
     """Return the common, model-agnostic action contract."""
     return {
         "provider_independent": True,
-        "transport": "AbletonOSC on 127.0.0.1:11000; replies use the shared liveosc turn on UDP 11001.",
+        "transport": "AbletonOSC on 127.0.0.1:11010; replies use the shared liveosc turn on UDP 11011.",
         "takeover": "Every action uses Macro Recorder's input guard and shows 'Queen is taking over Ableton Live'. "
                     "TAKE OVER aborts further OSC messages.",
         "indexing": "Track, scene, device, and parameter numbers are one-based in this API; names must match exactly.",
