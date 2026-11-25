@@ -13,7 +13,7 @@ import re
 from pathlib import Path
 
 HERE = Path(__file__).parent
-SPEECHIFY = '<script src="https://speechifykeys.pages.dev/speechify-keys.js" defer></script>'
+SPEECHIFY = '<script src="https://speechifykeys.markobosko.org/speechify-keys.js" defer></script>'
 BOWL_KIT = Path.home() / "Developer" / "MANTRA_MANIFEST" / "kits" / "donation-bowl"   # the bowl on every book (13.11.2026)
 
 
