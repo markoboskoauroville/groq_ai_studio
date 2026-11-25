@@ -23,3 +23,9 @@ address: MENU → Network → Wi-Fi → Display Wi-Fi Info. Only one program hol
 **Gain (v31, 25.11.2026, API facts only; no chat command yet):** `GET /gain` (dB, appliedBy hardware|digital, peakDB, clipCount, format
 aac|f32, auto{state}); `POST /gain {"db":-6}` / `{"delta":1}` / `{"reset":true}` / `{"auto":true}` (listens ~5 s, peaks to -12 dBFS) /
 `{"undo":true}` / `{"format":"f32"}` (next take in 32-bit float). Never while a take runs for auto or format.
+
+**VCAM (v32, 25.11.2026, API facts only; no chat command yet):** the live picture into the OBS Virtual Camera (in Zoom pick
+Camera → "OBS Virtual Camera"; OBS need not run). `GET http://127.0.0.1:8867/virtualcam/status` (on, feeding, sinkFound,
+ownerConflict, fps, latencyMs, delay{appliedMs}, droppedFrames, extensionVersion); `POST /virtualcam {"on":true}` / `{"on":false}`;
+`{"extraDelayMs":N}` holds the picture N ms more (the audio side fills it from v33). If ownerConflict is true another program
+(OBS's own Start Virtual Camera) holds the camera: tell Marko, never fight it; VCAM off and on takes it back once that one stops.
