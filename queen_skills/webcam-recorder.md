@@ -20,3 +20,6 @@ app is not running.
 **Camera menu facts (α7 V, Help Guide):** Wi-Fi remote = MENU → Network → Cnct./Remote Sht. → Remote Shoot Function → Remote Shooting: On
 (and Network → Wi-Fi → Wi-Fi Connect: On). USB remote = MENU → Setup → USB → USB Cnct Mode (PORT1) → Remote Shoot/Trn. The camera's
 address: MENU → Network → Wi-Fi → Display Wi-Fi Info. Only one program holds the camera's USB at a time (Imaging Edge Remote or this app).
+**Gain (v31, 25.11.2026, API facts only; no chat command yet):** `GET /gain` (dB, appliedBy hardware|digital, peakDB, clipCount, format
+aac|f32, auto{state}); `POST /gain {"db":-6}` / `{"delta":1}` / `{"reset":true}` / `{"auto":true}` (listens ~5 s, peaks to -12 dBFS) /
+`{"undo":true}` / `{"format":"f32"}` (next take in 32-bit float). Never while a take runs for auto or format.
